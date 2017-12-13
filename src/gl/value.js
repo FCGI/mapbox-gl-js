@@ -300,7 +300,7 @@ class BindVertexArrayOES extends ContextValue implements Value<any> {
         }
     }
 
-    static equal(a, b): boolean {
+    static equal(a: any, b: any): boolean {
         return a === b;
     }
 }
@@ -347,7 +347,7 @@ class ColorAttachment extends FramebufferValue implements Value<?WebGLTexture> {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, v, 0);
     }
 
-    static equal(a, b): boolean {
+    static equal(a: ?WebGLTexture, b: ?WebGLTexture): boolean {
         return a === b;
     }
 }
@@ -363,7 +363,7 @@ class DepthAttachment extends FramebufferValue implements Value<?WebGLRenderbuff
         gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, v);
     }
 
-    static equal(a, b): boolean {
+    static equal(a: ?WebGLRenderbuffer, b: ?WebGLRenderbuffer): boolean {
         return a === b;
     }
 }
