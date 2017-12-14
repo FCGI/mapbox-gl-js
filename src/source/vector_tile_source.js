@@ -15,6 +15,10 @@ import type Dispatcher from '../util/dispatcher';
 import type Tile from './tile';
 import type {Callback} from '../types/callback';
 
+//fc-offline-start
+window.resolveLocalFileSystemURL = window.resolveLocalFileSystemURL || window.webkitResolveLocalFileSystemURL;
+//fc-offline-end
+
 class VectorTileSource extends Evented implements Source {
     type: 'vector';
     id: string;
@@ -87,9 +91,11 @@ class VectorTileSource extends Evented implements Source {
     serialize() {
         return util.extend({}, this._options);
     }
-
-    loadTile(tile: Tile, callback: Callback<void>) {
+    //fc-offline-start
+    loadTile(tile: Tile, callback: Callback<void>, offline) {
+    //fc-offline-end
         const overscaling = tile.tileID.overscaleFactor();
+
         const url = normalizeURL(tile.tileID.canonical.url(this.tiles, this.scheme), this.url);
         const params = {
             request: this.map._transformRequest(url, ResourceType.Tile),
@@ -101,17 +107,59 @@ class VectorTileSource extends Evented implements Source {
             source: this.id,
             pixelRatio: browser.devicePixelRatio,
             overscaling: overscaling,
-            showCollisionBoxes: this.map.showCollisionBoxes
+            showCollisionBoxes: this.map.showCollisionBoxes,
+            //fc-offline-start
+            offline: offline
+            //fc-offline-end
         };
 
-        if (tile.workerID === undefined || tile.state === 'expired') {
-            tile.workerID = this.dispatcher.send('loadTile', params, done.bind(this));
-        } else if (tile.state === 'loading') {
-            // schedule tile reloading after it has been loaded
-            tile.reloadCallback = callback;
-        } else {
-            this.dispatcher.send('reloadTile', params, done.bind(this), tile.workerID);
-        }
+        var request = ()=>{
+            if (tile.workerID === undefined || tile.state === 'expired') {
+                tile.workerID = this.dispatcher.send('loadTile', params, done.bind(this));
+            } else if (tile.state === 'loading') {
+                // schedule tile reloading after it has been loaded
+                tile.reloadCallback = callback;
+            } else {
+                this.dispatcher.send('reloadTile', params, done.bind(this), tile.workerID);
+            }
+        };
+        //fc-offline-start
+        if(offline && offline.status){
+            var x = tile.tileID.canonical.x;
+            var y = tile.tileID.canonical.y;
+            var z = tile.tileID.canonical.z;
+            
+            let url = [offline.rootDirectory, this.id, z, x].join("/");
+            let filename = y.toString();
+ 
+            window.resolveLocalFileSystemURL(url, dirEntry =>{
+                dirEntry.getFile(filename, {create: false, exclusive: false}, fileEntry =>{
+                    fileEntry.file( file =>{
+                        var reader = new FileReader();
+                        reader.onloadend = function (){
+                            params.offline["data"] = {
+                                data: this.result,
+                                cacheControl: null,
+                                expires: null
+                            };
+                            request();
+                            params.offline.data = null;
+                        };
+
+                        reader.readAsArrayBuffer(file);
+                    }, err =>{
+                        request();
+                    });
+                }, err =>{
+                    request();
+                });
+            }, err =>{
+                request();
+            });
+        }else{
+            request();
+        };
+        //fc-offline-end
 
         function done(err, data) {
             if (tile.aborted)

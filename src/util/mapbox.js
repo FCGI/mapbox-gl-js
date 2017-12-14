@@ -40,6 +40,7 @@ function isMapboxURL(url: string) {
 exports.isMapboxURL = isMapboxURL;
 
 exports.normalizeStyleURL = function(url: string, accessToken?: string): string {
+    console.log(url);
     if (!isMapboxURL(url)) return url;
     const urlObject = parseUrl(url);
     urlObject.path = `/styles/v1${urlObject.path}`;

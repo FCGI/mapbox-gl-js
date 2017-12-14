@@ -38,8 +38,10 @@ export type LoadVectorData = (params: WorkerTileParameters, callback: LoadVector
 /**
  * @private
  */
+ //fc-offline-start
 function loadVectorTile(params: WorkerTileParameters, callback: LoadVectorDataCallback) {
-    const xhr = ajax.getArrayBuffer(params.request, (err, response) => {
+    var xhr;
+    var done = (err, response) => {
         if (err) {
             callback(err);
         } else if (response) {
@@ -50,12 +52,21 @@ function loadVectorTile(params: WorkerTileParameters, callback: LoadVectorDataCa
                 expires: response.expires
             });
         }
-    });
+    };
+
+    if(params.offline && params.offline.status && params.offline.data){
+        let response = params.offline.data;
+        done(null, response);
+    }else{
+        xhr = ajax.getArrayBuffer(params.request, done);
+    }
+
     return () => {
-        xhr.abort();
+        if(xhr) xhr.abort();
         callback();
     };
 }
+ //fc-offline-end
 
 /**
  * The {@link WorkerSource} implementation that supports {@link VectorTileSource}.

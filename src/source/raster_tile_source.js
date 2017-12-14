@@ -15,6 +15,9 @@ import type Dispatcher from '../util/dispatcher';
 import type Tile from './tile';
 import type {Callback} from '../types/callback';
 
+//fc-offline-start
+window.resolveLocalFileSystemURL = window.resolveLocalFileSystemURL || window.webkitResolveLocalFileSystemURL;
+//fc-offline-end
 class RasterTileSource extends Evented implements Source {
     type: 'raster' | 'raster-dem';
     id: string;
@@ -82,10 +85,12 @@ class RasterTileSource extends Evented implements Source {
     hasTile(tileID: OverscaledTileID) {
         return !this.tileBounds || this.tileBounds.contains(tileID.canonical);
     }
-
-    loadTile(tile: Tile, callback: Callback<void>) {
+    //fc-offline-start
+    loadTile(tile: Tile, callback: Callback<void>, offline) {
+        console.log(offline);
         const url = normalizeURL(tile.tileID.canonical.url(this.tiles, this.scheme), this.url, this.tileSize);
-        tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), (err, img) => {
+
+        var done = (err, img) => {
             delete tile.request;
 
             if (tile.aborted) {
@@ -119,8 +124,51 @@ class RasterTileSource extends Evented implements Source {
 
                 callback(null);
             }
-        });
+        };
+        
+        if(offline && offline.status){
+            console.log(tile);
+            var x = tile.tileID.canonical.x;
+            var y = tile.tileID.canonical.y;
+            var z = tile.tileID.canonical.z;
+            window.resolveLocalFileSystemURL([offline.rootDirectory,this.id, z, x].join("/"), dirEntry =>{
+                dirEntry.getFile(y.toString(), {create: false, exclusive: false}, fileEntry =>{
+                    fileEntry.file( file =>{
+                        var reader = new FileReader();
+                        reader.onloadend = function() {
+                            var imgData = {
+                                data: this.result,
+                                cacheControl: null,
+                                expires: null
+                            };
+
+                            const img = new window.Image();
+                            const URL = window.URL || window.webkitURL;
+                            img.onload = function(){
+                                done(null, img);
+                                URL.revokeObjectURL(img.src);
+                            };
+                            const transparentPngUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=';
+                            const blob = new window.Blob([new Uint8Array(imgData.data)], { type: 'image/png' });
+                            img.cacheControl = imgData.cacheControl;
+                            img.expires = imgData.expires;
+                            img.src = imgData.data.byteLength ? URL.createObjectURL(blob) : transparentPngUrl;
+                        };
+                        reader.readAsArrayBuffer(file);
+                    }, err =>{
+                        tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
+                    });
+                }, err =>{
+                    tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
+                });
+            }, err =>{
+                tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
+            });
+        }else{
+            tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
+        }
     }
+    //fc-offline-end
 
     abortTile(tile: Tile, callback: Callback<void>) {
         if (tile.request) {

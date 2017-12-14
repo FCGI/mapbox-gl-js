@@ -385,6 +385,9 @@ class Style extends Evented {
             .filter(op => !(op.command in ignoredDiffOperations));
 
         if (changes.length === 0) {
+            //fc-offline-start
+            this.stylesheet["offline"] = nextState.offline;
+            //fc-offline-end
             return false;
         }
 
@@ -790,7 +793,10 @@ class Style extends Evented {
             glyphs: this.stylesheet.glyphs,
             transition: this.stylesheet.transition,
             sources: util.mapObject(this.sourceCaches, (source) => source.serialize()),
-            layers: this._order.map((id) => this._layers[id].serialize())
+            layers: this._order.map((id) => this._layers[id].serialize()),
+            //fc-offline-start
+            offline: this.stylesheet.offline
+            //fc-offline-end
         }, (value) => { return value !== undefined; });
     }
 
@@ -933,6 +939,9 @@ class Style extends Evented {
 
     _updateSources(transform: Transform) {
         for (const id in this.sourceCaches) {
+            //fc-offline-start
+            this.sourceCaches[id].style.stylesheet.offline = this.stylesheet.offline;
+            //fc-offline-end
             this.sourceCaches[id].update(transform);
         }
     }

@@ -159,7 +159,7 @@ class Worker {
                     this.actor.send(type, data, callback, mapId);
                 }
             };
-
+            
             this.workerSources[mapId][type] = new (this.workerSourceTypes[type]: any)((actor: any), this.getLayerIndex(mapId));
         }
 

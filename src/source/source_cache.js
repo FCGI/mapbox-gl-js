@@ -147,7 +147,9 @@ class SourceCache extends Evented {
     }
 
     _loadTile(tile: Tile, callback: Callback<void>) {
-        return this._source.loadTile(tile, callback);
+        //fc-offline-start
+        return this._source.loadTile(tile, callback, this.style.stylesheet.offline);
+        //fc-offline-end
     }
 
     _unloadTile(tile: Tile) {

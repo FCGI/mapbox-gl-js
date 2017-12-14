@@ -9,9 +9,12 @@ module.exports = function(options) {
     const errors = validateString(options);
     if (errors.length) return errors;
 
-    if (value.indexOf('{fontstack}') === -1) {
-        errors.push(new ValidationError(key, value, '"glyphs" url must include a "{fontstack}" token'));
-    }
+    //fc-offline-start
+    //fc-delete
+    // if (value.indexOf('{fontstack}') === -1) {
+    //     errors.push(new ValidationError(key, value, '"glyphs" url must include a "{fontstack}" token'));
+    // }
+    //fc-offline-end
 
     if (value.indexOf('{range}') === -1) {
         errors.push(new ValidationError(key, value, '"glyphs" url must include a "{range}" token'));
