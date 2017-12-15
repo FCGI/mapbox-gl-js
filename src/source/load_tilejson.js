@@ -26,16 +26,7 @@ module.exports = function(options: any, requestTransformFn: RequestTransformFunc
     };
 
     if (options.url) {
-        //fc-offline-start
-        if(options.attribution){
-            console.log(options);
-            loaded(null, options.attribution);
-        }else{
-        //fc-offline-end
-            ajax.getJSON(requestTransformFn(normalizeURL(options.url), ajax.ResourceType.Source), loaded);
-        //fc-offline-start
-        }
-        //fc-offline-end
+        ajax.getJSON(requestTransformFn(normalizeURL(options.url), ajax.ResourceType.Source), loaded);
     } else {
         browser.frame(() => loaded(null, options));
     }

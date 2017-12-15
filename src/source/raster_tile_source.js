@@ -87,7 +87,6 @@ class RasterTileSource extends Evented implements Source {
     }
     //fc-offline-start
     loadTile(tile: Tile, callback: Callback<void>, offline) {
-        console.log(offline);
         const url = normalizeURL(tile.tileID.canonical.url(this.tiles, this.scheme), this.url, this.tileSize);
 
         var done = (err, img) => {
@@ -127,7 +126,6 @@ class RasterTileSource extends Evented implements Source {
         };
         
         if(offline && offline.status){
-            console.log(tile);
             var x = tile.tileID.canonical.x;
             var y = tile.tileID.canonical.y;
             var z = tile.tileID.canonical.z;
