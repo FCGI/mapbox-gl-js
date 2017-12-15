@@ -40,29 +40,43 @@ export type LoadVectorData = (params: WorkerTileParameters, callback: LoadVector
  */
  //fc-offline-start
 function loadVectorTile(params: WorkerTileParameters, callback: LoadVectorDataCallback) {
-    var xhr;
-    var done = (err, response) => {
+    const xhr = ajax.getArrayBuffer(params.request, (err, response) => {
         if (err) {
-            callback(err);
+            if(params.offline && params.offline.status && params.offline.data){
+                let response = params.offline.data;
+                //console.log("offline vector tile", response)
+                callback(null, {
+                    vectorTile: new vt.VectorTile(new Protobuf(response.data)),
+                    rawData: response.data,
+                    cacheControl: response.cacheControl,
+                    expires: response.expires
+                });
+            }else{
+                callback(err);
+            }
         } else if (response) {
-            callback(null, {
-                vectorTile: new vt.VectorTile(new Protobuf(response.data)),
-                rawData: response.data,
-                cacheControl: response.cacheControl,
-                expires: response.expires
-            });
+            if(params.offline && params.offline.status && params.offline.data){
+                let response = params.offline.data;
+                //console.log("offline vector tile", response)
+                callback(null, {
+                    vectorTile: new vt.VectorTile(new Protobuf(response.data)),
+                    rawData: response.data,
+                    cacheControl: response.cacheControl,
+                    expires: response.expires
+                });
+            }else{
+                //console.log("vector tile", response);
+                callback(null, {
+                    vectorTile: new vt.VectorTile(new Protobuf(response.data)),
+                    rawData: response.data,
+                    cacheControl: response.cacheControl,
+                    expires: response.expires
+                });
+            }
         }
-    };
-
-    if(params.offline && params.offline.status && params.offline.data){
-        let response = params.offline.data;
-        done(null, response);
-    }else{
-        xhr = ajax.getArrayBuffer(params.request, done);
-    }
-
+    });
     return () => {
-        if(xhr) xhr.abort();
+        xhr.abort();
         callback();
     };
 }

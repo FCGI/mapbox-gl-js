@@ -128,10 +128,9 @@ class VectorTileSource extends Evented implements Source {
             var x = tile.tileID.canonical.x;
             var y = tile.tileID.canonical.y;
             var z = tile.tileID.canonical.z;
-            
             let url = [offline.rootDirectory, this.id, z, x].join("/");
             let filename = y.toString();
- 
+            
             window.resolveLocalFileSystemURL(url, dirEntry =>{
                 dirEntry.getFile(filename, {create: false, exclusive: false}, fileEntry =>{
                     fileEntry.file( file =>{

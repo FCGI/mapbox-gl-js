@@ -89,82 +89,129 @@ class RasterTileSource extends Evented implements Source {
     loadTile(tile: Tile, callback: Callback<void>, offline) {
         const url = normalizeURL(tile.tileID.canonical.url(this.tiles, this.scheme), this.url, this.tileSize);
 
-        var done = (err, img) => {
+        var imgDone = (img)=>{
+            if (this.map._refreshExpiredTiles) tile.setExpiryData(img);
+            delete (img: any).cacheControl;
+            delete (img: any).expires;
+
+            const context = this.map.painter.context;
+            const gl = context.gl;
+            tile.texture = this.map.painter.getTileTexture(img.width);
+            if (tile.texture) {
+                tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+                gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            } else {
+                tile.texture = new Texture(context, img, gl.RGBA);
+                tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+
+                if (context.extTextureFilterAnisotropic) {
+                    gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, context.extTextureFilterAnisotropicMax);
+                }
+            }
+            gl.generateMipmap(gl.TEXTURE_2D);
+
+            tile.state = 'loaded';
+
+            callback(null);
+        };
+
+        tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), (err, img) => {
             delete tile.request;
 
             if (tile.aborted) {
                 tile.state = 'unloaded';
                 callback(null);
             } else if (err) {
-                tile.state = 'errored';
-                callback(err);
-            } else if (img) {
-                if (this.map._refreshExpiredTiles) tile.setExpiryData(img);
-                delete (img: any).cacheControl;
-                delete (img: any).expires;
+                if(offline && offline.status){
+                    var x = tile.tileID.canonical.x;
+                    var y = tile.tileID.canonical.y;
+                    var z = tile.tileID.canonical.z;
 
-                const context = this.map.painter.context;
-                const gl = context.gl;
-                tile.texture = this.map.painter.getTileTexture(img.width);
-                if (tile.texture) {
-                    tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
-                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
-                } else {
-                    tile.texture = new Texture(context, img, gl.RGBA);
-                    tile.texture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE, gl.LINEAR_MIPMAP_NEAREST);
+                    window.resolveLocalFileSystemURL([offline.rootDirectory,this.id, z, x].join("/"), dirEntry =>{
+                        dirEntry.getFile(y.toString(), {create: false, exclusive: false}, fileEntry =>{
+                            fileEntry.file( file =>{
+                                var reader = new FileReader();
+                                reader.onloadend = function() {
+                                    var imgData = {
+                                        data: this.result,
+                                        cacheControl: null,
+                                        expires: null
+                                    };
 
-                    if (context.extTextureFilterAnisotropic) {
-                        gl.texParameterf(gl.TEXTURE_2D, context.extTextureFilterAnisotropic.TEXTURE_MAX_ANISOTROPY_EXT, context.extTextureFilterAnisotropicMax);
-                    }
-                }
-                gl.generateMipmap(gl.TEXTURE_2D);
-
-                tile.state = 'loaded';
-
-                callback(null);
-            }
-        };
-        
-        if(offline && offline.status){
-            var x = tile.tileID.canonical.x;
-            var y = tile.tileID.canonical.y;
-            var z = tile.tileID.canonical.z;
-            window.resolveLocalFileSystemURL([offline.rootDirectory,this.id, z, x].join("/"), dirEntry =>{
-                dirEntry.getFile(y.toString(), {create: false, exclusive: false}, fileEntry =>{
-                    fileEntry.file( file =>{
-                        var reader = new FileReader();
-                        reader.onloadend = function() {
-                            var imgData = {
-                                data: this.result,
-                                cacheControl: null,
-                                expires: null
-                            };
-
-                            const img = new window.Image();
-                            const URL = window.URL || window.webkitURL;
-                            img.onload = function(){
-                                done(null, img);
-                                URL.revokeObjectURL(img.src);
-                            };
-                            const transparentPngUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=';
-                            const blob = new window.Blob([new Uint8Array(imgData.data)], { type: 'image/png' });
-                            img.cacheControl = imgData.cacheControl;
-                            img.expires = imgData.expires;
-                            img.src = imgData.data.byteLength ? URL.createObjectURL(blob) : transparentPngUrl;
-                        };
-                        reader.readAsArrayBuffer(file);
-                    }, err =>{
-                        tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
+                                    const img: HTMLImageElement = new window.Image();
+                                    const URL = window.URL || window.webkitURL;
+                                    img.onload = () => {
+                                        imgDone(img);
+                                        URL.revokeObjectURL(img.src);
+                                    };
+                                    const transparentPngUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=';
+                                    const blob: Blob = new window.Blob([new Uint8Array(imgData.data)], { type: 'image/png' });
+                                    (img: any).cacheControl = imgData.cacheControl;
+                                    (img: any).expires = imgData.expires;
+                                    img.src = imgData.data.byteLength ? URL.createObjectURL(blob) : transparentPngUrl;
+                                };
+                                reader.readAsArrayBuffer(file);
+                            }, error =>{
+                                tile.state = 'errored';
+                                callback(err);
+                            });
+                        }, error =>{
+                            tile.state = 'errored';
+                            callback(err);
+                        });
+                    }, error =>{
+                        tile.state = 'errored';
+                        callback(err);
                     });
-                }, err =>{
-                    tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
-                });
-            }, err =>{
-                tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
-            });
-        }else{
-            tile.request = ajax.getImage(this.map._transformRequest(url, ajax.ResourceType.Tile), done);
-        }
+                }else{
+                    tile.state = 'errored';
+                    callback(err);
+                }
+            } else if (img) {
+                if(offline && offline.status){
+                    var x = tile.tileID.canonical.x;
+                    var y = tile.tileID.canonical.y;
+                    var z = tile.tileID.canonical.z;
+
+                    window.resolveLocalFileSystemURL([offline.rootDirectory, this.id, z, x].join("/"), dirEntry =>{
+                        dirEntry.getFile(y.toString(), {create: false, exclusive: false}, fileEntry =>{
+                            fileEntry.file( file =>{
+                                var reader = new FileReader();
+                                reader.onloadend = function() {
+                                    var imgData = {
+                                        data: this.result,
+                                        cacheControl: null,
+                                        expires: null
+                                    };
+
+                                    const img: HTMLImageElement = new window.Image();
+                                    const URL = window.URL || window.webkitURL;
+                                    img.onload = () => {
+                                        imgDone(img);
+                                        URL.revokeObjectURL(img.src);
+                                    };
+                                    const transparentPngUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYV2NgAAIAAAUAAarVyFEAAAAASUVORK5CYII=';
+                                    const blob: Blob = new window.Blob([new Uint8Array(imgData.data)], { type: 'image/png' });
+                                    (img: any).cacheControl = imgData.cacheControl;
+                                    (img: any).expires = imgData.expires;
+                                    img.src = imgData.data.byteLength ? URL.createObjectURL(blob) : transparentPngUrl;
+                                };
+                                reader.readAsArrayBuffer(file);
+                            }, error =>{
+                                imgDone(img);
+                            });
+                        }, error =>{
+                            imgDone(img);
+                        });
+                    }, error =>{
+                        imgDone(img);
+                    });
+                }else{
+                    imgDone(img);
+                }
+            }
+        });
+
     }
     //fc-offline-end
 
