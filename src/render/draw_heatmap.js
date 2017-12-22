@@ -4,6 +4,9 @@ const mat4 = require('@mapbox/gl-matrix').mat4;
 const Texture = require('./texture');
 const pixelsToTileUnits = require('../source/pixels_to_tile_units');
 const Color = require('../style-spec/util/color');
+const DepthMode = require('../gl/depth_mode');
+const StencilMode = require('../gl/stencil_mode');
+const ColorMode = require('../gl/color_mode');
 
 import type Painter from './painter';
 import type SourceCache from '../source/source_cache';
@@ -22,20 +25,20 @@ function drawHeatmap(painter: Painter, sourceCache: SourceCache, layer: HeatmapS
         const context = painter.context;
         const gl = context.gl;
 
-        painter.setDepthSublayer(0);
-        context.depthMask.set(false);
+        context.setDepthMode(painter.depthModeForSublayer(0, DepthMode.ReadOnly));
 
         // Allow kernels to be drawn across boundaries, so that
         // large kernels are not clipped to tiles
-        context.stencilTest.set(false);
+        context.setStencilMode(StencilMode.disabled);
 
         bindFramebuffer(context, painter, layer);
 
         context.clear({ color: Color.transparent });
 
         // Turn on additive blending for kernels, which is a key aspect of kernel density estimation formula
-        context.blendFunc.set([gl.ONE, gl.ONE]);
+        context.setColorMode(new ColorMode([gl.ONE, gl.ONE], Color.transparent, [true, true, true, true]));
 
+        let first = true;
         for (let i = 0; i < coords.length; i++) {
             const coord = coords[i];
 
@@ -48,11 +51,14 @@ function drawHeatmap(painter: Painter, sourceCache: SourceCache, layer: HeatmapS
             const bucket: ?HeatmapBucket = (tile.getBucket(layer): any);
             if (!bucket) continue;
 
+            const prevProgram = painter.context.program.get();
             const programConfiguration = bucket.programConfigurations.get(layer.id);
             const program = painter.useProgram('heatmap', programConfiguration);
             const {zoom} = painter.transform;
-            programConfiguration.setUniforms(painter.context, program, layer.paint, {zoom});
-            gl.uniform1f(program.uniforms.u_radius, layer.paint.get('heatmap-radius'));
+            if (first || program.program !== prevProgram) {
+                programConfiguration.setUniforms(painter.context, program, layer.paint, {zoom});
+                first = false;
+            }
 
             gl.uniform1f(program.uniforms.u_extrude_scale, pixelsToTileUnits(tile, 1, zoom));
 
@@ -70,9 +76,9 @@ function drawHeatmap(painter: Painter, sourceCache: SourceCache, layer: HeatmapS
         }
 
         context.viewport.set([0, 0, painter.width, painter.height]);
-        context.blendFunc.set(painter._showOverdrawInspector ? [gl.CONSTANT_COLOR, gl.ONE] : [gl.ONE, gl.ONE_MINUS_SRC_ALPHA]);
 
     } else if (painter.renderPass === 'translucent') {
+        painter.context.setColorMode(painter.colorModeForRenderPass());
         renderTextureToMap(painter, layer);
     }
 }
@@ -140,7 +146,7 @@ function renderTextureToMap(painter, layer) {
     }
     colorRampTexture.bind(gl.LINEAR, gl.CLAMP_TO_EDGE);
 
-    context.depthTest.set(false);
+    context.setDepthMode(DepthMode.disabled);
 
     const program = painter.useProgram('heatmapTexture');
 
@@ -155,9 +161,7 @@ function renderTextureToMap(painter, layer) {
 
     gl.uniform2f(program.uniforms.u_world, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
+    painter.viewportVAO.bind(painter.context, program, painter.viewportBuffer, []);
 
-    painter.viewportVAO.bind(painter.context, program, painter.viewportBuffer);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-    context.depthTest.set(true);
 }

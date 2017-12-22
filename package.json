@@ -1,7 +1,7 @@
 {
   "name": "mapbox-gl",
   "description": "A WebGL interactive maps library",
-  "version": "0.42.2",
+  "version": "0.43.0",
   "main": "dist/mapbox-gl.js",
   "style": "dist/mapbox-gl.css",
   "license": "SEE LICENSE IN LICENSE.txt",
@@ -54,6 +54,7 @@
     "benchmark": "~2.1.0",
     "browserify": "^14.0.0",
     "coveralls": "^2.11.8",
+    "d3": "^4.12.0",
     "derequire": "^2.0.6",
     "documentation": "5.3.3",
     "ejs": "^2.5.7",
@@ -65,7 +66,7 @@
     "eslint-plugin-node": "^5.1.1",
     "eslint-plugin-react": "^7.3.0",
     "execcommand-copy": "^1.1.0",
-    "flow-bin": "^0.57.3",
+    "flow-bin": "^0.61.0",
     "flow-coverage-report": "^0.3.0",
     "flow-remove-types": "^1.0.4",
     "github-slugger": "^1.1.1",
@@ -154,7 +155,8 @@
     "test-flow": "node build/generate-flow-typed-style-spec && flow .",
     "test-flow-cov": "flow-coverage-report -i 'src/**/*.js' -t html",
     "test-cov": "nyc --require=flow-remove-types/register --reporter=text-summary --reporter=lcov --cache run-s test-unit test-expressions test-query test-render",
-    "prepublish": "in-publish && run-s build-dev build-min || not-in-publish"
+    "prepublish": "in-publish && run-s build-dev build-min || not-in-publish",
+    "codegen": "node build/generate-style-code.js && flow-node build/generate-struct-arrays.js"
   },
   "files": [
     "build/",

@@ -10,8 +10,8 @@ import type Context from '../gl/context';
 class VertexArrayObject {
     context: Context;
     boundProgram: ?Program;
-    boundVertexBuffer: ?VertexBuffer;
-    boundVertexBuffer2: ?VertexBuffer;
+    boundLayoutVertexBuffer: ?VertexBuffer;
+    boundPaintVertexBuffers: Array<VertexBuffer>;
     boundIndexBuffer: ?IndexBuffer;
     boundVertexOffset: ?number;
     boundDynamicVertexBuffer: ?VertexBuffer;
@@ -20,8 +20,8 @@ class VertexArrayObject {
 
     constructor() {
         this.boundProgram = null;
-        this.boundVertexBuffer = null;
-        this.boundVertexBuffer2 = null;
+        this.boundLayoutVertexBuffer = null;
+        this.boundPaintVertexBuffers = [];
         this.boundIndexBuffer = null;
         this.boundVertexOffset = null;
         this.boundDynamicVertexBuffer = null;
@@ -31,19 +31,26 @@ class VertexArrayObject {
     bind(context: Context,
          program: Program,
          layoutVertexBuffer: VertexBuffer,
+         paintVertexBuffers: Array<VertexBuffer>,
          indexBuffer: ?IndexBuffer,
-         vertexBuffer2: ?VertexBuffer,
          vertexOffset: ?number,
          dynamicVertexBuffer: ?VertexBuffer,
          dynamicVertexBuffer2: ?VertexBuffer) {
 
         this.context = context;
 
+        let paintBuffersDiffer = this.boundPaintVertexBuffers.length !== paintVertexBuffers.length;
+        for (let i = 0; !paintBuffersDiffer && i < paintVertexBuffers.length; i++) {
+            if (this.boundPaintVertexBuffers[i] !== paintVertexBuffers[i]) {
+                paintBuffersDiffer = true;
+            }
+        }
+
         const isFreshBindRequired = (
             !this.vao ||
             this.boundProgram !== program ||
-            this.boundVertexBuffer !== layoutVertexBuffer ||
-            this.boundVertexBuffer2 !== vertexBuffer2 ||
+            this.boundLayoutVertexBuffer !== layoutVertexBuffer ||
+            paintBuffersDiffer ||
             this.boundIndexBuffer !== indexBuffer ||
             this.boundVertexOffset !== vertexOffset ||
             this.boundDynamicVertexBuffer !== dynamicVertexBuffer ||
@@ -51,7 +58,7 @@ class VertexArrayObject {
         );
 
         if (!context.extVertexArrayObject || isFreshBindRequired) {
-            this.freshBind(program, layoutVertexBuffer, indexBuffer, vertexBuffer2, vertexOffset, dynamicVertexBuffer, dynamicVertexBuffer2);
+            this.freshBind(program, layoutVertexBuffer, paintVertexBuffers, indexBuffer, vertexOffset, dynamicVertexBuffer, dynamicVertexBuffer2);
         } else {
             context.bindVertexArrayOES.set(this.vao);
 
@@ -72,8 +79,8 @@ class VertexArrayObject {
 
     freshBind(program: Program,
               layoutVertexBuffer: VertexBuffer,
+              paintVertexBuffers: Array<VertexBuffer>,
               indexBuffer: ?IndexBuffer,
-              vertexBuffer2: ?VertexBuffer,
               vertexOffset: ?number,
               dynamicVertexBuffer: ?VertexBuffer,
               dynamicVertexBuffer2: ?VertexBuffer) {
@@ -91,8 +98,8 @@ class VertexArrayObject {
 
             // store the arguments so that we can verify them when the vao is bound again
             this.boundProgram = program;
-            this.boundVertexBuffer = layoutVertexBuffer;
-            this.boundVertexBuffer2 = vertexBuffer2;
+            this.boundLayoutVertexBuffer = layoutVertexBuffer;
+            this.boundPaintVertexBuffers = paintVertexBuffers;
             this.boundIndexBuffer = indexBuffer;
             this.boundVertexOffset = vertexOffset;
             this.boundDynamicVertexBuffer = dynamicVertexBuffer;
@@ -112,9 +119,10 @@ class VertexArrayObject {
         }
 
         layoutVertexBuffer.enableAttributes(gl, program);
-        if (vertexBuffer2) {
-            vertexBuffer2.enableAttributes(gl, program);
+        for (const vertexBuffer of paintVertexBuffers) {
+            vertexBuffer.enableAttributes(gl, program);
         }
+
         if (dynamicVertexBuffer) {
             dynamicVertexBuffer.enableAttributes(gl, program);
         }
@@ -124,10 +132,11 @@ class VertexArrayObject {
 
         layoutVertexBuffer.bind();
         layoutVertexBuffer.setVertexAttribPointers(gl, program, vertexOffset);
-        if (vertexBuffer2) {
-            vertexBuffer2.bind();
-            vertexBuffer2.setVertexAttribPointers(gl, program, vertexOffset);
+        for (const vertexBuffer of paintVertexBuffers) {
+            vertexBuffer.bind();
+            vertexBuffer.setVertexAttribPointers(gl, program, vertexOffset);
         }
+
         if (dynamicVertexBuffer) {
             dynamicVertexBuffer.bind();
             dynamicVertexBuffer.setVertexAttribPointers(gl, program, vertexOffset);

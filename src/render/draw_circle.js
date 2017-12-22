@@ -1,6 +1,8 @@
 // @flow
 
 const pixelsToTileUnits = require('../source/pixels_to_tile_units');
+const StencilMode = require('../gl/stencil_mode');
+const DepthMode = require('../gl/depth_mode');
 
 import type Painter from './painter';
 import type SourceCache from '../source/source_cache';
@@ -24,13 +26,13 @@ function drawCircles(painter: Painter, sourceCache: SourceCache, layer: CircleSt
     const context = painter.context;
     const gl = context.gl;
 
-    painter.setDepthSublayer(0);
-    context.depthMask.set(false);
-
+    context.setDepthMode(painter.depthModeForSublayer(0, DepthMode.ReadOnly));
     // Allow circles to be drawn across boundaries, so that
     // large circles are not clipped to tiles
-    context.stencilTest.set(false);
+    context.setStencilMode(StencilMode.disabled);
+    context.setColorMode(painter.colorModeForRenderPass());
 
+    let first = true;
     for (let i = 0; i < coords.length; i++) {
         const coord = coords[i];
 
@@ -38,9 +40,13 @@ function drawCircles(painter: Painter, sourceCache: SourceCache, layer: CircleSt
         const bucket: ?CircleBucket<*> = (tile.getBucket(layer): any);
         if (!bucket) continue;
 
+        const prevProgram = painter.context.program.get();
         const programConfiguration = bucket.programConfigurations.get(layer.id);
         const program = painter.useProgram('circle', programConfiguration);
-        programConfiguration.setUniforms(context, program, layer.paint, {zoom: painter.transform.zoom});
+        if (first || program.program !== prevProgram) {
+            programConfiguration.setUniforms(context, program, layer.paint, {zoom: painter.transform.zoom});
+            first = false;
+        }
 
         gl.uniform1f(program.uniforms.u_camera_to_center_distance, painter.transform.cameraToCenterDistance);
         gl.uniform1i(program.uniforms.u_scale_with_map, layer.paint.get('circle-pitch-scale') === 'map' ? 1 : 0);

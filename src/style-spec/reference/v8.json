@@ -33,7 +33,7 @@
       "default": 0,
       "period": 360,
       "units": "degrees",
-      "doc": "Default bearing, in degrees clockwise from true north.  The style bearing will be used only if the map has not been positioned by other means (e.g. map options or user interaction).",
+      "doc": "Default bearing, in degrees. The bearing is the compass direction that is \"up\"; for example, a bearing of 90° orients the map so that east is up. This value will be used only if the map has not been positioned by other means (e.g. map options or user interaction).",
       "example": 29
     },
     "pitch": {
@@ -521,7 +521,8 @@
           }
         }
       },
-      "doc": "Rendering type of this layer."
+      "doc": "Rendering type of this layer.",
+      "required": true
     },
     "metadata": {
       "type": "*",
@@ -2053,7 +2054,7 @@
         "group": "Ramps, scales, curves"
       },
       "interpolate": {
-        "doc": "Produces continuous, smooth results by interpolating between pairs of input and output values (\"stops\"). The `input` may be any numeric expression (e.g., `[\"get\", \"population\"]`). Stop inputs must be numeric literals in strictly ascending order. The output type must be `number`, `array<number>`, or `color`.\n\nInterpolation types:\n- `[\"linear\"]`: interpolates linearly between the pair of stops just less than and just greater than the input.\n- `[\"exponential\", base]`: interpolates exponentially between the stops just less than and just greater than the input. `base` controls the rate at which the output increases: higher values make the output increase more towards the high end of the range. With values close to 1 the output increases linearly.\n- `[\"cubic-bezier\", x1, y2, x2, y2]`: interpolates using the cubic bezier curve defined by the given control points.",
+        "doc": "Produces continuous, smooth results by interpolating between pairs of input and output values (\"stops\"). The `input` may be any numeric expression (e.g., `[\"get\", \"population\"]`). Stop inputs must be numeric literals in strictly ascending order. The output type must be `number`, `array<number>`, or `color`.\n\nInterpolation types:\n- `[\"linear\"]`: interpolates linearly between the pair of stops just less than and just greater than the input.\n- `[\"exponential\", base]`: interpolates exponentially between the stops just less than and just greater than the input. `base` controls the rate at which the output increases: higher values make the output increase more towards the high end of the range. With values close to 1 the output increases linearly.\n- `[\"cubic-bezier\", x1, y1, x2, y2]`: interpolates using the cubic bezier curve defined by the given control points.",
         "group": "Ramps, scales, curves"
       },
       "ln2": {
@@ -3214,7 +3215,7 @@
       "minimum": 1,
       "function": "interpolated",
       "zoom-function": true,
-      "property-function": false,
+      "property-function": true,
       "transition": true,
       "units": "pixels",
       "doc": "Radius of influence of one heatmap point in pixels. Increasing the value makes the heatmap smoother, but less detailed.",
@@ -3276,7 +3277,7 @@
       "function": "interpolated",
       "zoom-function": false,
       "property-function": false,
-      "transition": true,
+      "transition": false,
       "sdk-support": {
         "basic functionality": {
           "js": "0.41.0"

@@ -2,40 +2,23 @@
 
 import type {GlobalProperties} from "../style-spec/expression/index";
 
-const createVertexArrayType = require('./vertex_array_type');
 const packUint8ToFloat = require('../shaders/encode_attribute').packUint8ToFloat;
 const Color = require('../style-spec/util/color');
 const {register} = require('../util/web_worker_transfer');
+const {PossiblyEvaluatedPropertyValue} = require('../style/properties');
+const {
+    StructArrayLayout1f4,
+    StructArrayLayout2f8,
+    StructArrayLayout4f16
+} = require('./array_types');
 
 import type Context from '../gl/context';
 import type {TypedStyleLayer} from '../style/style_layer/typed_style_layer';
-import type {ViewType, StructArray} from '../util/struct_array';
+import type {StructArray, StructArrayMember} from '../util/struct_array';
 import type VertexBuffer from '../gl/vertex_buffer';
 import type Program from '../render/program';
 import type {Feature, SourceExpression, CompositeExpression} from '../style-spec/expression';
-import type {PossiblyEvaluated, PossiblyEvaluatedPropertyValue} from '../style/properties';
-
-export type LayoutAttribute = {
-    name: string,
-    type: ViewType,
-    components?: number
-}
-
-type PaintAttribute = {
-    property: string,
-    name?: string,
-    useIntegerZoom?: boolean
-}
-
-export type ProgramInterface = {
-    layoutAttributes: Array<LayoutAttribute>,
-    indexArrayType: Class<StructArray>,
-    dynamicLayoutAttributes?: Array<LayoutAttribute>,
-    opacityAttributes?: Array<LayoutAttribute>,
-    collisionAttributes?: Array<LayoutAttribute>,
-    paintAttributes?: Array<PaintAttribute>,
-    indexArrayType2?: Class<StructArray>
-}
+import type {PossiblyEvaluated} from '../style/properties';
 
 function packColor(color: Color): [number, number] {
     return [
@@ -71,10 +54,9 @@ function packColor(color: Color): [number, number] {
 interface Binder<T> {
     statistics: { max: number };
 
-    populatePaintArray(paintArray: StructArray,
-                       start: number,
-                       length: number,
-                       feature: Feature): void;
+    populatePaintArray(length: number, feature: Feature): void;
+    upload(Context): void;
+    destroy(): void;
 
     defines(): Array<string>;
 
@@ -102,6 +84,8 @@ class ConstantBinder<T> implements Binder<T> {
     }
 
     populatePaintArray() {}
+    upload() {}
+    destroy() {}
 
     setUniforms(context: Context,
                 program: Program,
@@ -123,37 +107,60 @@ class SourceExpressionBinder<T> implements Binder<T> {
     type: string;
     statistics: { max: number };
 
+    paintVertexArray: StructArray;
+    paintVertexAttributes: Array<StructArrayMember>;
+    paintVertexBuffer: ?VertexBuffer;
+
     constructor(expression: SourceExpression, name: string, type: string) {
         this.expression = expression;
         this.name = name;
         this.type = type;
         this.statistics = { max: -Infinity };
+        const PaintVertexArray = type === 'color' ? StructArrayLayout2f8 : StructArrayLayout1f4;
+        this.paintVertexAttributes = [{
+            name: `a_${name}`,
+            type: 'Float32',
+            components: type === 'color' ? 2 : 1,
+            offset: 0
+        }];
+        this.paintVertexArray = new PaintVertexArray();
     }
 
     defines() {
         return [];
     }
 
-    populatePaintArray(paintArray: StructArray,
-                       start: number,
-                       length: number,
-                       feature: Feature) {
+    populatePaintArray(length: number, feature: Feature) {
+        const paintArray = this.paintVertexArray;
+
+        const start = paintArray.length;
+        paintArray.reserve(length);
+
         const value = this.expression.evaluate({zoom: 0}, feature);
 
         if (this.type === 'color') {
             const color = packColor(value);
             for (let i = start; i < length; i++) {
-                const struct: any = paintArray.get(i);
-                struct[`a_${this.name}0`] = color[0];
-                struct[`a_${this.name}1`] = color[1];
+                paintArray.emplaceBack(color[0], color[1]);
             }
         } else {
             for (let i = start; i < length; i++) {
-                const struct: any = paintArray.get(i);
-                struct[`a_${this.name}`] = value;
+                paintArray.emplaceBack(value);
             }
 
             this.statistics.max = Math.max(this.statistics.max, value);
+        }
+    }
+
+    upload(context: Context) {
+        if (this.paintVertexArray) {
+            this.paintVertexBuffer = context.createVertexBuffer(this.paintVertexArray, this.paintVertexAttributes);
+        }
+    }
+
+    destroy() {
+        if (this.paintVertexBuffer) {
+            this.paintVertexBuffer.destroy();
         }
     }
 
@@ -170,6 +177,10 @@ class CompositeExpressionBinder<T> implements Binder<T> {
     zoom: number;
     statistics: { max: number };
 
+    paintVertexArray: StructArray;
+    paintVertexAttributes: Array<StructArrayMember>;
+    paintVertexBuffer: ?VertexBuffer;
+
     constructor(expression: CompositeExpression, name: string, type: string, useIntegerZoom: boolean, zoom: number) {
         this.expression = expression;
         this.name = name;
@@ -177,16 +188,26 @@ class CompositeExpressionBinder<T> implements Binder<T> {
         this.useIntegerZoom = useIntegerZoom;
         this.zoom = zoom;
         this.statistics = { max: -Infinity };
+        const PaintVertexArray = type === 'color' ? StructArrayLayout4f16 : StructArrayLayout2f8;
+        this.paintVertexAttributes = [{
+            name: `a_${name}`,
+            type: 'Float32',
+            components: type === 'color' ? 4 : 2,
+            offset: 0
+        }];
+        this.paintVertexArray = new PaintVertexArray();
     }
 
     defines() {
         return [];
     }
 
-    populatePaintArray(paintArray: StructArray,
-                       start: number,
-                       length: number,
-                       feature: Feature) {
+    populatePaintArray(length: number, feature: Feature) {
+        const paintArray = this.paintVertexArray;
+
+        const start = paintArray.length;
+        paintArray.reserve(length);
+
         const min = this.expression.evaluate({zoom: this.zoom    }, feature);
         const max = this.expression.evaluate({zoom: this.zoom + 1}, feature);
 
@@ -194,20 +215,26 @@ class CompositeExpressionBinder<T> implements Binder<T> {
             const minColor = packColor(min);
             const maxColor = packColor(max);
             for (let i = start; i < length; i++) {
-                const struct: any = paintArray.get(i);
-                struct[`a_${this.name}0`] = minColor[0];
-                struct[`a_${this.name}1`] = minColor[1];
-                struct[`a_${this.name}2`] = maxColor[0];
-                struct[`a_${this.name}3`] = maxColor[1];
+                paintArray.emplaceBack(minColor[0], minColor[1], maxColor[0], maxColor[1]);
             }
         } else {
             for (let i = start; i < length; i++) {
-                const struct: any = paintArray.get(i);
-                struct[`a_${this.name}0`] = min;
-                struct[`a_${this.name}1`] = max;
+                paintArray.emplaceBack(min, max);
             }
 
             this.statistics.max = Math.max(this.statistics.max, min, max);
+        }
+    }
+
+    upload(context: Context) {
+        if (this.paintVertexArray) {
+            this.paintVertexBuffer = context.createVertexBuffer(this.paintVertexArray, this.paintVertexAttributes);
+        }
+    }
+
+    destroy() {
+        if (this.paintVertexBuffer) {
+            this.paintVertexBuffer.destroy();
         }
     }
 
@@ -247,52 +274,44 @@ class CompositeExpressionBinder<T> implements Binder<T> {
 class ProgramConfiguration {
     binders: { [string]: Binder<any> };
     cacheKey: string;
-    layoutAttributes: ?Array<LayoutAttribute>;
-    PaintVertexArray: Class<StructArray>;
+    layoutAttributes: Array<StructArrayMember>;
 
-    paintVertexArray: StructArray;
-    paintVertexBuffer: ?VertexBuffer;
+    _buffers: Array<VertexBuffer>;
 
     constructor() {
         this.binders = {};
         this.cacheKey = '';
+
+        this._buffers = [];
     }
 
-    static createDynamic<Layer: TypedStyleLayer>(programInterface: ProgramInterface, layer: Layer, zoom: number) {
+    static createDynamic<Layer: TypedStyleLayer>(layer: Layer, zoom: number, filterProperties: (string) => boolean) {
         const self = new ProgramConfiguration();
-        const attributes = [];
+        const keys = [];
 
-        for (const attribute of programInterface.paintAttributes || []) {
-            const property = attribute.property;
-            const name = attribute.name || property.replace(`${layer.type}-`, '').replace(/-/g, '_');
-            const value: PossiblyEvaluatedPropertyValue<any> = layer.paint.get(property);
+        for (const property in layer.paint._values) {
+            if (!filterProperties(property)) continue;
+            const value = layer.paint.get(property);
+            if (!(value instanceof PossiblyEvaluatedPropertyValue) || !value.property.specification['property-function']) {
+                continue;
+            }
+            const name = paintAttributeName(property, layer.type);
             const type = value.property.specification.type;
             const useIntegerZoom = value.property.useIntegerZoom;
 
             if (value.value.kind === 'constant') {
                 self.binders[property] = new ConstantBinder(value.value, name, type);
-                self.cacheKey += `/u_${name}`;
+                keys.push(`/u_${name}`);
             } else if (value.value.kind === 'source') {
                 self.binders[property] = new SourceExpressionBinder(value.value, name, type);
-                self.cacheKey += `/a_${name}`;
-                attributes.push({
-                    name: `a_${name}`,
-                    type: 'Float32',
-                    components: type === 'color' ? 2 : 1
-                });
+                keys.push(`/a_${name}`);
             } else {
                 self.binders[property] = new CompositeExpressionBinder(value.value, name, type, useIntegerZoom, zoom);
-                self.cacheKey += `/z_${name}`;
-                attributes.push({
-                    name: `a_${name}`,
-                    type: 'Float32',
-                    components: type === 'color' ? 4 : 2
-                });
+                keys.push(`/z_${name}`);
             }
         }
 
-        self.PaintVertexArray = createVertexArrayType(attributes);
-        self.layoutAttributes = programInterface.layoutAttributes;
+        self.cacheKey = keys.sort().join('');
 
         return self;
     }
@@ -323,18 +342,9 @@ class ProgramConfiguration {
         return ProgramConfiguration.forBackgroundColor(Color.black, 1);
     }
 
-    populatePaintArray(length: number, feature: Feature) {
-        const paintArray = this.paintVertexArray;
-        if (paintArray.bytesPerElement === 0) return;
-
-        const start = paintArray.length;
-        paintArray.resize(length);
-
+    populatePaintArrays(length: number, feature: Feature) {
         for (const property in this.binders) {
-            this.binders[property].populatePaintArray(
-                paintArray,
-                start, length,
-                feature);
+            this.binders[property].populatePaintArray(length, feature);
         }
     }
 
@@ -353,15 +363,31 @@ class ProgramConfiguration {
         }
     }
 
+    getPaintVertexBuffers(): Array<VertexBuffer> {
+        return this._buffers;
+    }
+
     upload(context: Context) {
-        if (this.paintVertexArray) {
-            this.paintVertexBuffer = context.createVertexBuffer(this.paintVertexArray);
+        for (const property in this.binders) {
+            this.binders[property].upload(context);
         }
+
+        const buffers = [];
+        for (const property in this.binders) {
+            const binder = this.binders[property];
+            if ((binder instanceof SourceExpressionBinder ||
+                binder instanceof CompositeExpressionBinder) &&
+                binder.paintVertexBuffer
+            ) {
+                buffers.push(binder.paintVertexBuffer);
+            }
+        }
+        this._buffers = buffers;
     }
 
     destroy() {
-        if (this.paintVertexBuffer) {
-            this.paintVertexBuffer.destroy();
+        for (const property in this.binders) {
+            this.binders[property].destroy();
         }
     }
 }
@@ -369,18 +395,17 @@ class ProgramConfiguration {
 class ProgramConfigurationSet<Layer: TypedStyleLayer> {
     programConfigurations: {[string]: ProgramConfiguration};
 
-    constructor(programInterface: ProgramInterface, layers: $ReadOnlyArray<Layer>, zoom: number) {
+    constructor(layoutAttributes: Array<StructArrayMember>, layers: $ReadOnlyArray<Layer>, zoom: number, filterProperties: (string) => boolean = () => true) {
         this.programConfigurations = {};
         for (const layer of layers) {
-            const programConfiguration = ProgramConfiguration.createDynamic(programInterface, layer, zoom);
-            programConfiguration.paintVertexArray = new programConfiguration.PaintVertexArray();
-            this.programConfigurations[layer.id] = programConfiguration;
+            this.programConfigurations[layer.id] = ProgramConfiguration.createDynamic(layer, zoom, filterProperties);
+            this.programConfigurations[layer.id].layoutAttributes = layoutAttributes;
         }
     }
 
     populatePaintArrays(length: number, feature: Feature) {
         for (const key in this.programConfigurations) {
-            this.programConfigurations[key].populatePaintArray(length, feature);
+            this.programConfigurations[key].populatePaintArrays(length, feature);
         }
     }
 
@@ -401,10 +426,29 @@ class ProgramConfigurationSet<Layer: TypedStyleLayer> {
     }
 }
 
+// paint property arrays
+function paintAttributeName(property, type) {
+    const attributeNameExceptions = {
+        'text-opacity': 'opacity',
+        'icon-opacity': 'opacity',
+        'text-color': 'fill_color',
+        'icon-color': 'fill_color',
+        'text-halo-color': 'halo_color',
+        'icon-halo-color': 'halo_color',
+        'text-halo-blur': 'halo_blur',
+        'icon-halo-blur': 'halo_blur',
+        'text-halo-width': 'halo_width',
+        'icon-halo-width': 'halo_width',
+        'line-gap-width': 'gapwidth'
+    };
+    return attributeNameExceptions[property] ||
+        property.replace(`${type}-`, '').replace(/-/g, '_');
+}
+
 register('ConstantBinder', ConstantBinder);
 register('SourceExpressionBinder', SourceExpressionBinder);
 register('CompositeExpressionBinder', CompositeExpressionBinder);
-register('ProgramConfiguration', ProgramConfiguration, {omit: ['PaintVertexArray']});
+register('ProgramConfiguration', ProgramConfiguration, {omit: ['_buffers']});
 register('ProgramConfigurationSet', ProgramConfigurationSet);
 
 module.exports = {
