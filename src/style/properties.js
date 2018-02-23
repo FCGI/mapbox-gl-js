@@ -472,6 +472,7 @@ type PossiblyEvaluatedPropertyValues<Props: Object>
 /**
  * `PossiblyEvaluated` stores a map of all (property name, `R`) pairs for paint or layout properties of a
  * given layer type.
+ * @private
  */
 class PossiblyEvaluated<Props: Object> {
     _properties: Properties<Props>;
@@ -547,7 +548,7 @@ class DataDrivenProperty<T> implements Property<T, PossiblyEvaluatedPropertyValu
         }
 
         // Special case hack solely for fill-outline-color.
-        if (a.value.value === undefined || a.value.value === undefined)
+        if (a.value.value === undefined || b.value.value === undefined)
             return (undefined: any);
 
         const interp: ?(a: T, b: T, t: number) => T = (interpolate: any)[this.specification.type];

@@ -29,6 +29,7 @@ class VectorTileSource extends Evented implements Source {
     tileSize: number;
 
     _options: VectorSourceSpecification;
+    _collectResourceTiming: boolean;
     dispatcher: Dispatcher;
     map: Map;
     bounds: ?[number, number, number, number];
@@ -37,7 +38,7 @@ class VectorTileSource extends Evented implements Source {
     reparseOverscaled: boolean;
     isTileClipped: boolean;
 
-    constructor(id: string, options: VectorSourceSpecification, dispatcher: Dispatcher, eventedParent: Evented) {
+    constructor(id: string, options: VectorSourceSpecification & {collectResourceTiming: boolean}, dispatcher: Dispatcher, eventedParent: Evented) {
         super();
         this.id = id;
         this.dispatcher = dispatcher;
@@ -52,6 +53,8 @@ class VectorTileSource extends Evented implements Source {
 
         util.extend(this, util.pick(options, ['url', 'scheme', 'tileSize']));
         this._options = util.extend({ type: 'vector' }, options);
+
+        this._collectResourceTiming = options.collectResourceTiming;
 
         if (this.tileSize !== 512) {
             throw new Error('vector tile sources must have a tileSize of 512');
@@ -112,6 +115,7 @@ class VectorTileSource extends Evented implements Source {
             offline: offline
             //fc-offline-end
         };
+        params.request.collectResourceTiming = this._collectResourceTiming;
 
         var request = ()=>{
             if (tile.workerID === undefined || tile.state === 'expired') {
@@ -167,6 +171,9 @@ class VectorTileSource extends Evented implements Source {
             if (err) {
                 return callback(err);
             }
+
+            if (data && data.resourceTiming)
+                tile.resourceTiming = data.resourceTiming;
 
             if (this.map._refreshExpiredTiles) tile.setExpiryData(data);
             tile.loadVectorData(data, this.map.painter);

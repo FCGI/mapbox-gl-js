@@ -13,7 +13,6 @@ import type {Callback} from '../types/callback';
  * The `Source` interface must be implemented by each source type, including "core" types (`vector`, `raster`,
  * `video`, etc.) and all custom, third-party types.
  *
- * @class Source
  * @private
  *
  * @param {string} id The id for the source. Must not be used by any existing source.
@@ -40,7 +39,9 @@ export interface Source {
      * implementation for this Source type by calling `self.registerWorkerSource(workerSource: WorkerSource)`.
      * @private
      */
-    static workerSourceURL?: URL;
+    // Static interface properties are not supported in flow as of 0.62.0.
+    // https://github.com/facebook/flow/issues/5590
+    // static workerSourceURL?: URL;
 
     +type: string;
     id: string;

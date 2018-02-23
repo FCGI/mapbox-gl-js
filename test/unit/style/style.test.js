@@ -60,18 +60,15 @@ test('Style', (t) => {
 
     t.test('registers plugin listener', (t) => {
         rtlTextPlugin.clearRTLTextPlugin();
-        t.stub(rtlTextPlugin, 'createBlobURL').returns("data:text/javascript;base64,abc");
-        window.useFakeXMLHttpRequest();
-        window.server.respondWith('/plugin.js', "doesn't matter");
-        rtlTextPlugin.setRTLTextPlugin("/plugin.js");
+
         t.spy(rtlTextPlugin, 'registerForPluginAvailability');
 
         const style = new Style(new StubMap());
         t.spy(style.dispatcher, 'broadcast');
         t.ok(rtlTextPlugin.registerForPluginAvailability.calledOnce);
 
-        window.server.respond();
-        t.ok(style.dispatcher.broadcast.calledWith('loadRTLTextPlugin', "data:text/javascript;base64,abc"));
+        rtlTextPlugin.setRTLTextPlugin("some bogus url");
+        t.ok(style.dispatcher.broadcast.calledWith('loadRTLTextPlugin', "some bogus url"));
         t.end();
     });
 
@@ -997,15 +994,13 @@ test('Style#addLayer', (t) => {
         const layer = {id: 'background', type: 'background'};
 
         style.on('error', (e) => {
-            t.deepEqual(e.layer, {id: 'background'});
-            t.notOk(/duplicate/.match(e.error.message));
+            t.match(e.error, /already exists/);
             t.end();
         });
 
         style.on('style.load', () => {
             style.addLayer(layer);
             style.addLayer(layer);
-            t.end();
         });
     });
 

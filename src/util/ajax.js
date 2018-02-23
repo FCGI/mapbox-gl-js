@@ -36,14 +36,25 @@ if (typeof Object.freeze == 'function') {
 export type RequestParameters = {
     url: string,
     headers?: Object,
-    credentials?: 'same-origin' | 'include'
+    credentials?: 'same-origin' | 'include',
+    collectResourceTiming?: boolean
 };
 
 class AJAXError extends Error {
     status: number;
-    constructor(message: string, status: number) {
+    url: string;
+    constructor(message: string, status: number, url: string) {
         super(message);
         this.status = status;
+        this.url = url;
+
+        // work around for https://github.com/Rich-Harris/buble/issues/40
+        this.name = this.constructor.name;
+        this.message = message;
+    }
+
+    toString() {
+        return `${this.name}: ${this.message} (${this.status}): ${this.url}`;
     }
 }
 
@@ -74,7 +85,7 @@ exports.getJSON = function(requestParameters: RequestParameters, callback: Callb
             }
             callback(null, data);
         } else {
-            callback(new AJAXError(xhr.statusText, xhr.status));
+            callback(new AJAXError(xhr.statusText, xhr.status, requestParameters.url));
         }
     };
     xhr.send();
@@ -99,7 +110,7 @@ exports.getArrayBuffer = function(requestParameters: RequestParameters, callback
                 expires: xhr.getResponseHeader('Expires')
             });
         } else {
-            callback(new AJAXError(xhr.statusText, xhr.status));
+            callback(new AJAXError(xhr.statusText, xhr.status, requestParameters.url));
         }
     };
     xhr.send();

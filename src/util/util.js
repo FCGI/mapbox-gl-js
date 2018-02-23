@@ -288,30 +288,7 @@ exports.filterObject = function(input: Object, iterator: Function, context?: Obj
     return output;
 };
 
-/**
- * Deeply compares two object literals.
- *
- * @private
- */
-exports.deepEqual = function(a: ?mixed, b: ?mixed): boolean {
-    if (Array.isArray(a)) {
-        if (!Array.isArray(b) || a.length !== b.length) return false;
-        for (let i = 0; i < a.length; i++) {
-            if (!exports.deepEqual(a[i], b[i])) return false;
-        }
-        return true;
-    }
-    if (typeof a === 'object' && a !== null && b !== null) {
-        if (!(typeof b === 'object')) return false;
-        const keys = Object.keys(a);
-        if (keys.length !== Object.keys(b).length) return false;
-        for (const key in a) {
-            if (!exports.deepEqual(a[key], b[key])) return false;
-        }
-        return true;
-    }
-    return a === b;
-};
+exports.deepEqual = require('../style-spec/util/deep_equal');
 
 /**
  * Deeply clones two objects.
@@ -358,6 +335,7 @@ exports.warnOnce = function(message: string): void {
 /**
  * Indicates if the provided Points are in a counter clockwise (true) or clockwise (false) order
  *
+ * @private
  * @returns true for a counter clockwise set of points
  */
 // http://bryceboe.com/2006/10/23/line-segment-intersection-algorithm/
@@ -370,6 +348,7 @@ exports.isCounterClockwise = function(a: Point, b: Point, c: Point): boolean {
  * have a clockwise winding.  Negative areas are interior rings and have a counter clockwise
  * ordering.
  *
+ * @private
  * @param ring Exterior or interior ring
  */
 exports.calculateSignedArea = function(ring: Array<Point>): number {
@@ -385,6 +364,7 @@ exports.calculateSignedArea = function(ring: Array<Point>): number {
 /**
  * Detects closed polygons, first + last point are equal
  *
+ * @private
  * @param points array of points
  * @return true if the points are a closed polygon
  */
@@ -409,6 +389,7 @@ exports.isClosedPolygon = function(points: Array<Point>): boolean {
 /**
  * Converts spherical coordinates to cartesian coordinates.
  *
+ * @private
  * @param spherical Spherical coordinates, in [radial, azimuthal, polar]
  * @return cartesian coordinates in [x, y, z]
  */
@@ -432,6 +413,7 @@ exports.sphericalToCartesian = function([r, azimuthal, polar]: [number, number, 
 /**
  * Parses data from 'Cache-Control' headers.
  *
+ * @private
  * @param cacheControl Value of 'Cache-Control' header
  * @return object containing parsed header info.
  */

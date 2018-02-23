@@ -231,7 +231,7 @@
       "type": "enum",
       "values": {
         "raster-dem": {
-            "doc": "A raster DEM source using Mapbox Terrain RGB"
+            "doc": "A RGB-encoded raster DEM source"
         }
       },
       "doc": "The type of the source."
@@ -271,6 +271,19 @@
     "attribution": {
       "type": "string",
       "doc": "Contains an attribution to be displayed when the map is shown to a user."
+    },
+    "encoding": {
+      "type": "enum",
+      "values": {
+        "terrarium": {
+          "doc": "Terrarium format PNG tiles. See https://aws.amazon.com/es/public-datasets/terrain/ for more info."
+        },
+        "mapbox": {
+          "doc": "Mapbox Terrain RGB tiles. See https://www.mapbox.com/help/access-elevation-data/#mapbox-terrain-rgb for more info."
+        }
+      },
+      "default": "mapbox",
+      "doc": "The encoding used by this source. Mapbox Terrain RGB is used by default"
     },
     "*": {
       "type": "*",
@@ -502,7 +515,7 @@
           }
         },
         "hillshade": {
-          "doc": "Client-side hillshading visualization based on DEM data. Currently, the implementation only supports Mapbox Terrain RGB tiles",
+          "doc": "Client-side hillshading visualization based on DEM data. Currently, the implementation only supports Mapbox Terrain RGB and Mapzen Terrarium tiles.",
           "sdk-support": {
             "basic functionality": {
               "js": "0.43.0"
@@ -540,13 +553,13 @@
       "type": "number",
       "minimum": 0,
       "maximum": 24,
-      "doc": "The minimum zoom level on which the layer gets parsed and appears on."
+      "doc": "The minimum zoom level for the layer. At zoom levels less than the minzoom, the layer will be hidden."
     },
     "maxzoom": {
       "type": "number",
       "minimum": 0,
       "maximum": 24,
-      "doc": "The maximum zoom level on which the layer gets parsed and appears on."
+      "doc": "The maximum zoom level for the layer. At zoom levels equal to or greater than the maxzoom, the layer will be hidden."
     },
     "filter": {
       "type": "filter",
@@ -1069,7 +1082,7 @@
       "function": "piecewise-constant",
       "zoom-function": true,
       "property-function": true,
-      "doc": "Name of image in sprite to use for drawing an image background. A string with `{tokens}` replaced, referencing the data property to pull from. (`{token}` replacement is only supported for literal `icon-image` values; not for property functions.)",
+      "doc": "Name of image in sprite to use for drawing an image background. Within literal values and zoom functions, property names enclosed in curly brackets (e.g. `{token}`) are replaced with the value of the named property. Expressions and property functions do not support this syntax; for equivalent functionality in expressions, use the [`concat`](#expressions-concat) and [`get`](#expressions-get) operators.",
       "tokens": true,
       "sdk-support": {
         "basic functionality": {
@@ -1162,7 +1175,6 @@
     "icon-offset": {
       "type": "array",
       "value": "number",
-      "units": "pixels multiplied by the value of \"icon-size\"",
       "length": 2,
       "default": [
         0,
@@ -1171,7 +1183,7 @@
       "function": "interpolated",
       "zoom-function": true,
       "property-function": true,
-      "doc": "Offset distance of icon from its anchor. Positive values indicate right and down, while negative values indicate left and up. When combined with `icon-rotate` the offset will be as if the rotated direction was up.",
+      "doc": "Offset distance of icon from its anchor. Positive values indicate right and down, while negative values indicate left and up. Each component is multiplied by the value of `icon-size` to obtain the final offset in pixels. When combined with `icon-rotate` the offset will be as if the rotated direction was up.",
       "requires": [
         "icon-image"
       ],
@@ -1353,7 +1365,7 @@
       "property-function": true,
       "default": "",
       "tokens": true,
-      "doc": "Value to use for a text label. Feature properties are specified using tokens like `{field_name}`. (`{token}` replacement is only supported for literal `text-field` values; not for property functions.)",
+      "doc": "Value to use for a text label. Within literal values and zoom functions, property names enclosed in curly brackets (e.g. `{token}`) are replaced with the value of the named property. Expressions and property functions do not support this syntax; for equivalent functionality in expressions, use the [`concat`](#expressions-concat) and [`get`](#expressions-get) operators.",
       "sdk-support": {
         "basic functionality": {
           "js": "0.10.0",
@@ -1387,7 +1399,9 @@
           "ios": "2.0.0",
           "macos": "0.1.0"
         },
-        "data-driven styling": {}
+        "data-driven styling": {
+          "js": "0.43.0"
+        }
       }
     },
     "text-size": {
@@ -2222,11 +2236,11 @@
         "group": "Math"
       },
       "==": {
-        "doc": "Returns `true` if the input values are equal, `false` otherwise. The inputs must be numbers, strings, or booleans, and both of the same type.",
+        "doc": "Returns `true` if the input values are equal, `false` otherwise. Equality is strictly typed: values of different types are always considered not equal.",
         "group": "Decision"
       },
       "!=": {
-        "doc": "Returns `true` if the input values are not equal, `false` otherwise. The inputs must be numbers, strings, or booleans, and both of the same type.",
+        "doc": "Returns `true` if the input values are not equal, `false` otherwise. Equality is strictly typed: values of different types are always considered not equal.",
         "group": "Decision"
       },
       ">": {
@@ -3223,7 +3237,9 @@
         "basic functionality": {
           "js": "0.41.0"
         },
-        "data-driven styling": {}
+        "data-driven styling": {
+          "js": "0.43.0"
+        }
       }
     },
     "heatmap-weight": {
@@ -3829,7 +3845,13 @@
         "doc": "The direction of the light source used to generate the hillshading with 0 as the top of the viewport if `hillshade-illumination-anchor` is set to `viewport` and due north if `hillshade-illumination-anchor` is set to `map`.",
         "function": "interpolated",
         "zoom-function": true,
-        "transition": true
+        "transition": false,
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.43.0"
+          },
+          "data-driven styling": {}
+        }
       },
       "hillshade-illumination-anchor": {
         "type": "enum",
@@ -3844,7 +3866,13 @@
           }
         },
         "default": "viewport",
-        "doc": "Direction of light source when map is rotated."
+        "doc": "Direction of light source when map is rotated.",
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.43.0"
+          },
+          "data-driven styling": {}
+        }
       },
       "hillshade-exaggeration": {
         "type": "number",
@@ -3854,7 +3882,13 @@
         "maximum": 1,
         "function": "interpolated",
         "zoom-function": true,
-        "transition": true
+        "transition": true,
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.43.0"
+          },
+          "data-driven styling": {}
+        }
       },
       "hillshade-shadow-color": {
         "type": "color",
@@ -3862,7 +3896,13 @@
         "doc": "The shading color of areas that face away from the light source.",
         "function": "interpolated",
         "zoom-function": true,
-        "transition": true
+        "transition": true,
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.43.0"
+          },
+          "data-driven styling": {}
+        }
       },
       "hillshade-highlight-color": {
         "type": "color",
@@ -3870,7 +3910,13 @@
         "doc": "The shading color of areas that faces towards the light source.",
         "function": "interpolated",
         "zoom-function": true,
-        "transition": true
+        "transition": true,
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.43.0"
+          },
+          "data-driven styling": {}
+        }
       },
       "hillshade-accent-color": {
         "type": "color",
@@ -3878,7 +3924,13 @@
         "doc": "The shading color used to accentuate rugged terrain like sharp cliffs and gorges.",
         "function": "interpolated",
         "zoom-function": true,
-        "transition": true
+        "transition": true,
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.43.0"
+          },
+          "data-driven styling": {}
+        }
       }
   },
   "paint_background": {

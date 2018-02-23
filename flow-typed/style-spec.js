@@ -102,7 +102,8 @@ declare type RasterDEMSourceSpecification = {
     "minzoom"?: number,
     "maxzoom"?: number,
     "tileSize"?: number,
-    "attribution"?: string
+    "attribution"?: string,
+    "encoding"?: "terrarium" | "mapbox"
 }
 
 declare type GeojsonSourceSpecification = {|
@@ -303,7 +304,7 @@ declare type HeatmapLayerSpecification = {|
         "visibility"?: "visible" | "none"
     |},
     "paint"?: {|
-        "heatmap-radius"?: PropertyValueSpecification<number>,
+        "heatmap-radius"?: DataDrivenPropertyValueSpecification<number>,
         "heatmap-weight"?: DataDrivenPropertyValueSpecification<number>,
         "heatmap-intensity"?: PropertyValueSpecification<number>,
         "heatmap-color"?: ExpressionSpecification,
