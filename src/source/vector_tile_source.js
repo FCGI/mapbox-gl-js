@@ -134,7 +134,7 @@ class VectorTileSource extends Evented implements Source {
             var z = tile.tileID.canonical.z;
             let url = [offline.rootDirectory, this.id, z, x].join("/");
             let filename = y.toString();
-            
+
             window.resolveLocalFileSystemURL(url, dirEntry =>{
                 dirEntry.getFile(filename, {create: false, exclusive: false}, fileEntry =>{
                     fileEntry.file( file =>{
@@ -142,9 +142,10 @@ class VectorTileSource extends Evented implements Source {
                         reader.onloadend = function (){
                             params.offline["data"] = {
                                 data: this.result,
-                                cacheControl: null,
+                                cacheControl: "max-age=43200,s-maxage=300",
                                 expires: null
                             };
+                            //offline: check loadVectorTile for more info
                             request();
                             params.offline.data = null;
                         };
