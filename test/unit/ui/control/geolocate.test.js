@@ -1,14 +1,12 @@
-'use strict';
-
-const test = require('mapbox-gl-js-test').test;
-const window = require('../../../../src/util/window');
-const Map = require('../../../../src/ui/map');
-const GeolocateControl = require('../../../../src/ui/control/geolocate_control');
+import { test } from 'mapbox-gl-js-test';
+import window from '../../../../src/util/window';
+import Map from '../../../../src/ui/map';
+import GeolocateControl from '../../../../src/ui/control/geolocate_control';
 
 // window and navigator globals need to be set for mock-geolocation
 global.window = {};
 global.navigator = {};
-const geolocation = require('mock-geolocation');
+const geolocation = require('mock-geolocation'); // eslint-disable-line import/no-commonjs
 geolocation.use();
 
 // assign the mock geolocation to window
@@ -80,6 +78,31 @@ test('GeolocateControl geolocate event', (t) => {
     });
     geolocate._geolocateButton.dispatchEvent(click);
     geolocation.send({latitude: 10, longitude: 20, accuracy: 30, timestamp: 40});
+});
+
+test('GeolocateControl trigger', (t) => {
+    t.plan(1);
+
+    const map = createMap();
+    const geolocate = new GeolocateControl();
+    map.addControl(geolocate);
+
+    geolocate.on('geolocate', () => {
+        t.end();
+    });
+    t.true(geolocate.trigger());
+    geolocation.send({latitude: 10, longitude: 20, accuracy: 30, timestamp: 40});
+});
+
+test('GeolocateControl trigger before added to map', (t) => {
+    t.plan(2);
+    t.stub(console, 'warn');
+
+    const geolocate = new GeolocateControl();
+
+    t.false(geolocate.trigger());
+    t.ok(console.warn.calledWith('Geolocate control triggered before added to a map'));
+    t.end();
 });
 
 test('GeolocateControl geolocate fitBoundsOptions', (t) => {

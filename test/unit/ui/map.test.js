@@ -1,14 +1,14 @@
-'use strict';
+import { test } from 'mapbox-gl-js-test';
+import { extend } from '../../../src/util/util';
+import window from '../../../src/util/window';
+import Map from '../../../src/ui/map';
+import LngLat from '../../../src/geo/lng_lat';
+import Tile from '../../../src/source/tile';
+import { OverscaledTileID } from '../../../src/source/tile_id';
+import { Event, ErrorEvent } from '../../../src/util/evented';
+import simulate from 'mapbox-gl-js-test/simulate_interaction';
 
-const test = require('mapbox-gl-js-test').test;
-const util = require('../../../src/util/util');
-const window = require('../../../src/util/window');
-const Map = require('../../../src/ui/map');
-const LngLat = require('../../../src/geo/lng_lat');
-const Tile = require('../../../src/source/tile');
-const OverscaledTileID = require('../../../src/source/tile_id').OverscaledTileID;
-
-const fixed = require('mapbox-gl-js-test/fixed');
+import fixed from 'mapbox-gl-js-test/fixed';
 const fixedNum = fixed.Num;
 const fixedLngLat = fixed.LngLat;
 const fixedCoord = fixed.Coord;
@@ -18,7 +18,7 @@ function createMap(options, callback) {
     Object.defineProperty(container, 'offsetWidth', {value: 200, configurable: true});
     Object.defineProperty(container, 'offsetHeight', {value: 200, configurable: true});
 
-    const map = new Map(util.extend({
+    const map = new Map(extend({
         container: container,
         interactive: false,
         attributionControl: false,
@@ -153,9 +153,9 @@ test('Map', (t) => {
                 map.on('data', recordEvent);
                 map.on('dataloading', recordEvent);
 
-                map.style.fire('error');
-                map.style.fire('data');
-                map.style.fire('dataloading');
+                map.style.fire(new Event('error'));
+                map.style.fire(new Event('data'));
+                map.style.fire(new Event('dataloading'));
 
                 t.deepEqual(events, [
                     'error',
@@ -181,12 +181,12 @@ test('Map', (t) => {
                 map.on('tiledata', recordEvent);
                 map.on('tiledataloading', recordEvent);
 
-                map.style.fire('data', {dataType: 'style'});
-                map.style.fire('dataloading', {dataType: 'style'});
-                map.style.fire('data', {dataType: 'source'});
-                map.style.fire('dataloading', {dataType: 'source'});
-                map.style.fire('data', {dataType: 'tile'});
-                map.style.fire('dataloading', {dataType: 'tile'});
+                map.style.fire(new Event('data', {dataType: 'style'}));
+                map.style.fire(new Event('dataloading', {dataType: 'style'}));
+                map.style.fire(new Event('data', {dataType: 'source'}));
+                map.style.fire(new Event('dataloading', {dataType: 'source'}));
+                map.style.fire(new Event('data', {dataType: 'tile'}));
+                map.style.fire(new Event('dataloading', {dataType: 'tile'}));
 
                 t.deepEqual(events, [
                     'styledata',
@@ -332,7 +332,7 @@ test('Map', (t) => {
 
             map.on('load', () => {
                 map.addSource('geojson', createStyleSource());
-                t.deepEqual(map.getStyle(), util.extend(createStyle(), {
+                t.deepEqual(map.getStyle(), extend(createStyle(), {
                     sources: {geojson: createStyleSource()}
                 }));
                 t.end();
@@ -362,7 +362,7 @@ test('Map', (t) => {
 
             map.on('load', () => {
                 map.addLayer(layer);
-                t.deepEqual(map.getStyle(), util.extend(createStyle(), {
+                t.deepEqual(map.getStyle(), extend(createStyle(), {
                     layers: [layer]
                 }));
                 t.end();
@@ -382,7 +382,7 @@ test('Map', (t) => {
             map.on('load', () => {
                 map.addSource('fill', source);
                 map.addLayer(layer);
-                t.deepEqual(map.getStyle(), util.extend(createStyle(), {
+                t.deepEqual(map.getStyle(), extend(createStyle(), {
                     sources: { fill: source },
                     layers: [layer]
                 }));
@@ -422,7 +422,7 @@ test('Map', (t) => {
 
     t.test('#moveLayer', (t) => {
         const map = createMap({
-            style: util.extend(createStyle(), {
+            style: extend(createStyle(), {
                 sources: {
                     mapbox: {
                         type: 'vector',
@@ -461,7 +461,7 @@ test('Map', (t) => {
             'source-layer': 'sourceLayer'
         };
         const map = createMap({
-            style: util.extend(createStyle(), {
+            style: extend(createStyle(), {
                 sources: {
                     mapbox: {
                         type: 'vector',
@@ -868,10 +868,9 @@ test('Map', (t) => {
                 const output = map.queryRenderedFeatures(map.project(new LngLat(0, 0)));
 
                 const args = map.style.queryRenderedFeatures.getCall(0).args;
-                t.deepEqual(args[0].map(c => fixedCoord(c)), [{ column: 0.5, row: 0.5, zoom: 0 }]); // query geometry
+                t.deepEqual(args[0].worldCoordinate.map(c => fixedCoord(c)), [{ column: 0.5, row: 0.5, zoom: 0 }]); // query geometry
                 t.deepEqual(args[1], {}); // params
-                t.deepEqual(args[2], 0); // bearing
-                t.deepEqual(args[3], 0); // zoom
+                t.deepEqual(args[2], map.transform); // transform
                 t.deepEqual(output, []);
 
                 t.end();
@@ -917,7 +916,7 @@ test('Map', (t) => {
 
                 map.queryRenderedFeatures(map.project(new LngLat(360, 0)));
 
-                const coords = map.style.queryRenderedFeatures.getCall(0).args[0].map(c => fixedCoord(c));
+                const coords = map.style.queryRenderedFeatures.getCall(0).args[0].worldCoordinate.map(c => fixedCoord(c));
                 t.equal(coords[0].column, 1.5);
                 t.equal(coords[0].row, 0.5);
                 t.equal(coords[0].zoom, 0);
@@ -1221,7 +1220,7 @@ test('Map', (t) => {
             const map = createMap();
             const stub = t.stub(console, 'error');
             const error = new Error('test');
-            map.fire('error', {error});
+            map.fire(new ErrorEvent(error));
             t.ok(stub.calledOnce);
             t.equal(stub.getCall(0).args[0], error);
             t.end();
@@ -1234,7 +1233,7 @@ test('Map', (t) => {
                 t.equal(event.error, error);
                 t.end();
             });
-            map.fire('error', {error});
+            map.fire(new ErrorEvent(error));
         });
 
         t.end();
@@ -1270,7 +1269,7 @@ test('Map', (t) => {
 
     t.test('#removeLayer restores Map#loaded() to true', (t) => {
         const map = createMap({
-            style: util.extend(createStyle(), {
+            style: extend(createStyle(), {
                 sources: {
                     mapbox: {
                         type: 'vector',
@@ -1297,6 +1296,50 @@ test('Map', (t) => {
                 }
             });
         });
+    });
+
+    t.test('stops camera animation on mousedown when interactive', (t) => {
+        const map = createMap({interactive: true});
+        map.flyTo({ center: [200, 0], duration: 100 });
+
+        simulate.mousedown(map.getCanvasContainer());
+        t.equal(map.isEasing(), false);
+
+        map.remove();
+        t.end();
+    });
+
+    t.test('continues camera animation on mousedown when non-interactive', (t) => {
+        const map = createMap({interactive: false});
+        map.flyTo({ center: [200, 0], duration: 100 });
+
+        simulate.mousedown(map.getCanvasContainer());
+        t.equal(map.isEasing(), true);
+
+        map.remove();
+        t.end();
+    });
+
+    t.test('stops camera animation on touchstart when interactive', (t) => {
+        const map = createMap({interactive: true});
+        map.flyTo({ center: [200, 0], duration: 100 });
+
+        simulate.touchstart(map.getCanvasContainer());
+        t.equal(map.isEasing(), false);
+
+        map.remove();
+        t.end();
+    });
+
+    t.test('continues camera animation on touchstart when non-interactive', (t) => {
+        const map = createMap({interactive: false});
+        map.flyTo({ center: [200, 0], duration: 100 });
+
+        simulate.touchstart(map.getCanvasContainer());
+        t.equal(map.isEasing(), true);
+
+        map.remove();
+        t.end();
     });
 
     t.end();

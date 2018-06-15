@@ -1,7 +1,7 @@
-'use strict';
+import { test } from 'mapbox-gl-js-test';
 
-const test = require('mapbox-gl-js-test').test;
-const spec = require('../../../src/style-spec/style-spec');
+/* eslint-disable import/namespace */
+import * as spec from '../../../src/style-spec/style-spec';
 
 ['v8', 'latest'].forEach((version) => {
     ['', 'min'].forEach((kind) => {

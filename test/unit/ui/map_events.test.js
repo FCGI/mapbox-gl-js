@@ -1,9 +1,7 @@
-'use strict';
-
-const test = require('mapbox-gl-js-test').test;
-const Map = require('../../../src/ui/map');
-const window = require('../../../src/util/window');
-const simulate = require('mapbox-gl-js-test/simulate_interaction');
+import { test } from 'mapbox-gl-js-test';
+import Map from '../../../src/ui/map';
+import window from '../../../src/util/window';
+import simulate from 'mapbox-gl-js-test/simulate_interaction';
 
 function createMap() {
     return new Map({
@@ -239,7 +237,7 @@ test('Map#off distinguishes distinct listeners', (t) => {
 });
 
 ['mouseenter', 'mouseover'].forEach((event) => {
-    test(`Map#on ${event} does not fire if the specified layer does not exiist`, (t) => {
+    test(`Map#on ${event} does not fire if the specified layer does not exist`, (t) => {
         const map = createMap();
 
         t.stub(map, 'getLayer').returns(null);
@@ -267,6 +265,7 @@ test('Map#off distinguishes distinct listeners', (t) => {
         const spy = t.spy(function (e) {
             t.equal(this, map);
             t.equal(e.type, event);
+            t.equal(e.target, map);
             t.equal(e.features, features);
         });
 
@@ -529,4 +528,19 @@ test('Map#off distinguishes distinct listeners', (t) => {
         t.ok(spy.notCalled);
         t.end();
     });
+});
+
+test(`Map#on mousedown can have default behavior prevented and still fire subsequent click event`, (t) => {
+    const map = createMap();
+
+    map.on('mousedown', e => e.preventDefault());
+
+    const click = t.spy();
+    map.on('click', click);
+
+    simulate.click(map.getCanvas());
+    t.ok(click.callCount, 1);
+
+    map.remove();
+    t.end();
 });

@@ -1,19 +1,14 @@
 // @flow
 
-const assert = require('assert');
+import assert from 'assert';
 
-const Grid = require('grid-index');
-const Color = require('../style-spec/util/color');
-const {
-    StylePropertyFunction,
-    StyleExpression,
-    StyleExpressionWithErrorHandling,
-    ZoomDependentExpression,
-    ZoomConstantExpression
-} = require('../style-spec/expression');
-const {CompoundExpression} = require('../style-spec/expression/compound_expression');
-const expressions = require('../style-spec/expression/definitions');
-const {ImageData} = require('./window');
+import Grid from 'grid-index';
+import Color from '../style-spec/util/color';
+import { StylePropertyFunction, StyleExpression, ZoomDependentExpression, ZoomConstantExpression } from '../style-spec/expression';
+import CompoundExpression from '../style-spec/expression/compound_expression';
+import expressions from '../style-spec/expression/definitions';
+import window from './window';
+const { ImageData } = window;
 
 import type {Transferable} from '../types/transferable';
 
@@ -58,7 +53,7 @@ const registry: Registry = {};
  *
  * @private
  */
-function register<T: any>(name: string, klass: Class<T>, options: RegisterOptions<T> = {}) {
+export function register<T: any>(name: string, klass: Class<T>, options: RegisterOptions<T> = {}) {
     assert(!registry[name], `${name} is already registered.`);
     (Object.defineProperty: any)(klass, '_classRegistryKey', {
         value: name,
@@ -91,11 +86,7 @@ register('Error', Error);
 
 register('StylePropertyFunction', StylePropertyFunction);
 register('StyleExpression', StyleExpression, {omit: ['_evaluator']});
-register(
-    'StyleExpressionWithErrorHandling',
-    StyleExpressionWithErrorHandling,
-    {omit: ['_evaluator']}
-);
+
 register('ZoomDependentExpression', ZoomDependentExpression);
 register('ZoomConstantExpression', ZoomConstantExpression);
 register('CompoundExpression', CompoundExpression, {omit: ['_evaluate']});
@@ -118,7 +109,7 @@ for (const name in expressions) {
  *
  * @private
  */
-function serialize(input: mixed, transferables?: Array<Transferable>): Serialized {
+export function serialize(input: mixed, transferables?: Array<Transferable>): Serialized {
     if (input === null ||
         input === undefined ||
         typeof input === 'boolean' ||
@@ -191,6 +182,10 @@ function serialize(input: mixed, transferables?: Array<Transferable>): Serialize
                     property :
                     serialize(property, transferables);
             }
+
+            if (input instanceof Error) {
+                properties.message = input.message;
+            }
         }
 
         return {name, properties};
@@ -199,7 +194,7 @@ function serialize(input: mixed, transferables?: Array<Transferable>): Serialize
     throw new Error(`can't serialize object of type ${typeof input}`);
 }
 
-function deserialize(input: Serialized): mixed {
+export function deserialize(input: Serialized): mixed {
     if (input === null ||
         input === undefined ||
         typeof input === 'boolean' ||
@@ -247,9 +242,3 @@ function deserialize(input: Serialized): mixed {
 
     throw new Error(`can't deserialize object of type ${typeof input}`);
 }
-
-module.exports = {
-    register,
-    serialize,
-    deserialize
-};

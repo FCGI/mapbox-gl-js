@@ -1,39 +1,64 @@
 // @flow
-const Evented = require('../util/evented');
+
+import { Event, Evented } from '../util/evented';
 
 let pluginRequested = false;
 let pluginURL = null;
+let foregroundLoadComplete = false;
 
-module.exports.evented = new Evented();
+export const evented = new Evented();
 
+type CompletionCallback = (error?: Error) => void;
 type ErrorCallback = (error: Error) => void;
 
-module.exports.registerForPluginAvailability = function(
-    callback: (args: {pluginURL: string, errorCallback: ErrorCallback}) => void
+let _completionCallback;
+
+export const registerForPluginAvailability = function(
+    callback: (args: {pluginURL: string, completionCallback: CompletionCallback}) => void
 ) {
     if (pluginURL) {
-        callback({ pluginURL: pluginURL, errorCallback: module.exports.errorCallback});
+        callback({ pluginURL: pluginURL, completionCallback: _completionCallback});
     } else {
-        module.exports.evented.once('pluginAvailable', callback);
+        evented.once('pluginAvailable', callback);
     }
     return callback;
 };
 
-// Only exposed for tests
-module.exports.clearRTLTextPlugin = function() {
+export const clearRTLTextPlugin = function() {
     pluginRequested = false;
     pluginURL = null;
 };
 
-module.exports.setRTLTextPlugin = function(url: string, callback: ErrorCallback) {
+export const setRTLTextPlugin = function(url: string, callback: ErrorCallback) {
     if (pluginRequested) {
         throw new Error('setRTLTextPlugin cannot be called multiple times.');
     }
     pluginRequested = true;
     pluginURL = url;
-    module.exports.errorCallback = callback;
-    module.exports.evented.fire('pluginAvailable', { pluginURL: pluginURL, errorCallback: callback });
+    _completionCallback = (error?: Error) => {
+        if (error) {
+            // Clear loaded state to allow retries
+            clearRTLTextPlugin();
+            if (callback) {
+                callback(error);
+            }
+        } else {
+            // Called once for each worker
+            foregroundLoadComplete = true;
+        }
+    };
+    evented.fire(new Event('pluginAvailable', { pluginURL: pluginURL, completionCallback: _completionCallback }));
 };
 
-module.exports.applyArabicShaping = (null: ?Function);
-module.exports.processBidirectionalText = (null: ?(string, Array<number>) => Array<string>);
+export const plugin: {
+    applyArabicShaping: ?Function,
+    processBidirectionalText: ?(string, Array<number>) => Array<string>,
+    isLoaded: () => boolean
+} = {
+    applyArabicShaping: null,
+    processBidirectionalText: null,
+    isLoaded: function() {
+        return foregroundLoadComplete ||       // Foreground: loaded if the completion callback returned successfully
+            plugin.applyArabicShaping != null; // Background: loaded if the plugin functions have been compiled
+    }
+};

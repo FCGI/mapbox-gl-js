@@ -1,9 +1,10 @@
 // @flow
-const {RGBAImage} = require('../util/image');
-const util = require('../util/util');
-const {register} = require('../util/web_worker_transfer');
+import { RGBAImage } from '../util/image';
 
-class Level {
+import { warnOnce, clamp } from '../util/util';
+import { register } from '../util/web_worker_transfer';
+
+export class Level {
     dim: number;
     border: number;
     stride: number;
@@ -43,7 +44,7 @@ register('Level', Level);
 // surrounding pixel values to compute the slope at that pixel, and we cannot accurately calculate the slope at pixels on a
 // tile's edge without backfilling from neighboring tiles.
 
-class DEMData {
+export default class DEMData {
     uid: string;
     scale: number;
     level: Level;
@@ -59,7 +60,9 @@ class DEMData {
 
     loadFromImage(data: RGBAImage, encoding: "mapbox" | "terrarium") {
         if (data.height !== data.width) throw new RangeError('DEM tiles must be square');
-        if (encoding && encoding !== "mapbox" && encoding !== "terrarium") return util.warnOnce(`"${encoding}" is not a valid encoding type. Valid types include "mapbox" and "terrarium".`);
+        if (encoding && encoding !== "mapbox" && encoding !== "terrarium") return warnOnce(
+            `"${encoding}" is not a valid encoding type. Valid types include "mapbox" and "terrarium".`
+        );
         // Build level 0
         const level = this.level = new Level(data.width, data.width / 2);
         const pixels = data.data;
@@ -144,10 +147,10 @@ class DEMData {
             break;
         }
 
-        const xMin = util.clamp(_xMin, -t.border, t.dim + t.border);
-        const xMax = util.clamp(_xMax, -t.border, t.dim + t.border);
-        const yMin = util.clamp(_yMin, -t.border, t.dim + t.border);
-        const yMax = util.clamp(_yMax, -t.border, t.dim + t.border);
+        const xMin = clamp(_xMin, -t.border, t.dim + t.border);
+        const xMax = clamp(_xMax, -t.border, t.dim + t.border);
+        const yMin = clamp(_yMin, -t.border, t.dim + t.border);
+        const yMax = clamp(_yMax, -t.border, t.dim + t.border);
 
         const ox = -dx * t.dim;
         const oy = -dy * t.dim;
@@ -160,5 +163,3 @@ class DEMData {
 }
 
 register('DEMData', DEMData);
-module.exports = {DEMData, Level};
-

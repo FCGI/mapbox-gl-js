@@ -114,7 +114,8 @@ declare type GeojsonSourceSpecification = {|
     "tolerance"?: number,
     "cluster"?: boolean,
     "clusterRadius"?: number,
-    "clusterMaxZoom"?: number
+    "clusterMaxZoom"?: number,
+    "lineMetrics"?: boolean
 |}
 
 declare type VideoSourceSpecification = {|
@@ -129,13 +130,6 @@ declare type ImageSourceSpecification = {|
     "coordinates": [[number, number], [number, number], [number, number], [number, number]]
 |}
 
-declare type CanvasSourceSpecification = {|
-    "type": "canvas",
-    "coordinates": [[number, number], [number, number], [number, number], [number, number]],
-    "animate"?: boolean,
-    "canvas": string
-|}
-
 declare type SourceSpecification =
     | VectorSourceSpecification
     | RasterSourceSpecification
@@ -143,7 +137,6 @@ declare type SourceSpecification =
     | GeojsonSourceSpecification
     | VideoSourceSpecification
     | ImageSourceSpecification
-    | CanvasSourceSpecification
 
 declare type FillLayerSpecification = {|
     "id": string,
@@ -194,7 +187,8 @@ declare type LineLayerSpecification = {|
         "line-offset"?: DataDrivenPropertyValueSpecification<number>,
         "line-blur"?: DataDrivenPropertyValueSpecification<number>,
         "line-dasharray"?: PropertyValueSpecification<Array<number>>,
-        "line-pattern"?: PropertyValueSpecification<string>
+        "line-pattern"?: PropertyValueSpecification<string>,
+        "line-gradient"?: ExpressionSpecification
     |}
 |}
 

@@ -1,15 +1,13 @@
-'use strict';
-
-const test = require('mapbox-gl-js-test').test;
-const browser = require('../../../../src/util/browser');
-const util = require('../../../../src/util/util');
-const window = require('../../../../src/util/window');
-const Map = require('../../../../src/ui/map');
-const DOM = require('../../../../src/util/dom');
-const simulate = require('mapbox-gl-js-test/simulate_interaction');
+import { test } from 'mapbox-gl-js-test';
+import browser from '../../../../src/util/browser';
+import { extend } from '../../../../src/util/util';
+import window from '../../../../src/util/window';
+import Map from '../../../../src/ui/map';
+import DOM from '../../../../src/util/dom';
+import simulate from 'mapbox-gl-js-test/simulate_interaction';
 
 function createMap(options) {
-    return new Map(util.extend({
+    return new Map(extend({
         container: DOM.create('div', '', window.document.body),
         style: {
             "version": 8,
@@ -19,23 +17,23 @@ function createMap(options) {
     }, options));
 }
 
-test('ScrollZoomHandler zooms in response to wheel events', (t) => {
+test('ScrollZoomHandler', (t) => {
     const browserNow = t.stub(browser, 'now');
     let now = 1555555555555;
     browserNow.callsFake(() => now);
 
     t.test('Zooms for single mouse wheel tick', (t) => {
         const map = createMap();
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         // simulate a single 'wheel' event
         const startZoom = map.getZoom();
 
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -simulate.magicWheelZoomDelta});
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         now += 400;
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         t.equalWithPrecision(map.getZoom() - startZoom,  0.0285, 0.001);
 
@@ -45,7 +43,7 @@ test('ScrollZoomHandler zooms in response to wheel events', (t) => {
 
     t.test('Zooms for single mouse wheel tick with non-magical deltaY', (t) => {
         const map = createMap();
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         // Simulate a single 'wheel' event without the magical deltaY value.
         // This requires the handler to briefly wait to see if a subsequent
@@ -60,7 +58,7 @@ test('ScrollZoomHandler zooms in response to wheel events', (t) => {
     t.test('Zooms for multiple mouse wheel ticks', (t) => {
         const map = createMap();
 
-        map._updateCamera();
+        map._renderTaskQueue.run();
         const startZoom = map.getZoom();
 
         const events = [
@@ -85,7 +83,7 @@ test('ScrollZoomHandler zooms in response to wheel events', (t) => {
                 lastWheelEvent = now;
             }
             if (now % 20 === 0) {
-                map._updateCamera();
+                map._renderTaskQueue.run();
             }
         }
 
@@ -97,7 +95,7 @@ test('ScrollZoomHandler zooms in response to wheel events', (t) => {
 
     t.test('Gracefully ignores wheel events with deltaY: 0', (t) => {
         const map = createMap();
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         const startZoom = map.getZoom();
         // simulate  shift+'wheel' events
@@ -105,16 +103,32 @@ test('ScrollZoomHandler zooms in response to wheel events', (t) => {
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -0, shiftKey: true});
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -0, shiftKey: true});
         simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -0, shiftKey: true});
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         now += 400;
-        map._updateCamera();
+        map._renderTaskQueue.run();
 
         t.equal(map.getZoom() - startZoom, 0.0);
 
         t.end();
     });
 
+    test('does not zoom if preventDefault is called on the wheel event', (t) => {
+        const map = createMap();
+
+        map.on('wheel', e => e.preventDefault());
+
+        simulate.wheel(map.getCanvas(), {type: 'wheel', deltaY: -simulate.magicWheelZoomDelta});
+        map._renderTaskQueue.run();
+
+        now += 400;
+        map._renderTaskQueue.run();
+
+        t.equal(map.getZoom(), 0);
+
+        map.remove();
+        t.end();
+    });
+
     t.end();
 });
-
