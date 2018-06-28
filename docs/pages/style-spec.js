@@ -5,6 +5,7 @@ import md from '../components/md';
 import PageShell from '../components/page_shell';
 import LeftNav from '../components/left_nav';
 import TopNav from '../components/top_nav';
+import SDKSupportTable from '../components/sdk_support_table';
 import {highlightJavascript, highlightJSON} from '../components/prism_highlight';
 import entries from 'object.entries';
 import ref from '../../src/style-spec/reference/latest';
@@ -294,13 +295,6 @@ class Item extends React.Component {
         }
     }
 
-    support(support, sdk) {
-        if (!support) return 'Not yet supported';
-        support = support[sdk];
-        if (support === undefined) return 'Not yet supported';
-        return `>= ${support}`;
-    }
-
     requires(req, i) {
         if (typeof req === 'string') {
             return <span key={i}><em>Requires</em> <var>{req}</var>. </span>;
@@ -389,28 +383,7 @@ class Item extends React.Component {
 
                 {this.props['sdk-support'] &&
                 <div className='space-bottom2'>
-                    <table className='micro fixed'>
-                        <thead>
-                            <tr className='fill-light'>
-                                <th>SDK Support</th>
-                                <td className='center'>Mapbox GL JS</td>
-                                <td className='center'>Android SDK</td>
-                                <td className='center'>iOS SDK</td>
-                                <td className='center'>macOS SDK</td>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {entries(this.props['sdk-support']).map(([key, entry], i) =>
-                                <tr key={i}>
-                                    <td>{md(key)}</td>
-                                    <td className='center'>{this.support(entry, 'js')}</td>
-                                    <td className='center'>{this.support(entry, 'android')}</td>
-                                    <td className='center'>{this.support(entry, 'ios')}</td>
-                                    <td className='center'>{this.support(entry, 'macos')}</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                    <SDKSupportTable {...this.props['sdk-support']} />
                 </div>}
             </div>
         );
@@ -601,26 +574,14 @@ export default class extends React.Component {
                                             name !== '*' && name !== 'type' &&
                                             <Item key={i} id={`sources-vector-${name}`} name={name} {...prop}/>)}
                                     </div>
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td className='center'>&gt;= 0.10.0</td>
-                                                <td className='center'>&gt;= 2.0.1</td>
-                                                <td className='center'>&gt;= 2.0.0</td>
-                                                <td className='center'>&gt;= 0.1.0</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.10.0',
+                                            android: '2.0.1',
+                                            ios: '2.0.0',
+                                            macos: '0.1.0'
+                                        }
+                                    }}/>
                                 </div>
 
                                 <div id='sources-raster' className='pad2 keyline-bottom'>
@@ -642,26 +603,14 @@ export default class extends React.Component {
                                             name !== '*' && name !== 'type' &&
                                             <Item key={i} id={`sources-raster-${name}`} name={name} {...prop}/>)}
                                     </div>
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td className='center'>&gt;= 0.10.0</td>
-                                                <td className='center'>&gt;= 2.0.1</td>
-                                                <td className='center'>&gt;= 2.0.0</td>
-                                                <td className='center'>&gt;= 0.1.0</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.10.0',
+                                            android: '2.0.1',
+                                            ios: '2.0.0',
+                                            macos: '0.1.0'
+                                        }
+                                    }}/>
                                 </div>
 
                                 <div id='sources-raster-dem' className='pad2 keyline-bottom'>
@@ -681,26 +630,11 @@ export default class extends React.Component {
                                             name !== '*' && name !== 'type' &&
                                             <Item key={i} id={`sources-raster-dem-${name}`} name={name} {...prop}/>)}
                                     </div>
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td>&gt;= 0.43.0</td>
-                                                <td>Not supported</td>
-                                                <td>Not supported</td>
-                                                <td>Not supported</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.43.0'
+                                        }
+                                    }}/>
                                 </div>
 
                                 <div id='sources-geojson' className='pad2 keyline-bottom'>
@@ -742,33 +676,20 @@ export default class extends React.Component {
                                             name !== '*' && name !== 'type' &&
                                             <Item key={i} id={`sources-geojson-${name}`} name={name} {...prop}/>)}
                                     </div>
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Requirements</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td className='center'>&gt;= 0.10.0</td>
-                                                <td className='center'>&gt;= 2.0.1</td>
-                                                <td className='center'>&gt;= 2.0.0</td>
-                                                <td className='center'>&gt;= 0.1.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td>clustering</td>
-                                                <td className='center'>&gt;= 0.14.0</td>
-                                                <td className='center'>&gt;= 4.2.0</td>
-                                                <td className='center'>&gt;= 3.4.0</td>
-                                                <td className='center'>&gt;= 0.3.0</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.10.0',
+                                            android: '2.0.1',
+                                            ios: '2.0.0',
+                                            macos: '0.1.0'
+                                        },
+                                        'clustering': {
+                                            js: '0.14.0',
+                                            android: '4.2.0',
+                                            ios: '3.4.0',
+                                            macos: '0.3.0'
+                                        }
+                                    }}/>
                                 </div>
 
                                 <div id='sources-image' className='pad2 keyline-bottom'>
@@ -798,26 +719,14 @@ export default class extends React.Component {
                                             name !== '*' && name !== 'type' &&
                                             <Item key={i} id={`sources-image-${name}`} name={name} {...prop}/>)}
                                     </div>
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td className='center'>&gt;= 0.10.0</td>
-                                                <td className='center'>&gt;= 5.2.0</td>
-                                                <td className='center'>&gt;= 3.7.0</td>
-                                                <td className='center'>&gt;= 0.6.0</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.10.0',
+                                            android: '5.2.0',
+                                            ios: '3.7.0',
+                                            macos: '0.6.0'
+                                        }
+                                    }}/>
                                 </div>
 
                                 <div id='sources-video' className='pad2 keyline-bottom'>
@@ -852,26 +761,11 @@ export default class extends React.Component {
                                             name !== '*' && name !== 'type' &&
                                             <Item key={i} id={`sources-video-${name}`} name={name} {...prop}/>)}
                                     </div>
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td>&gt;= 0.10.0</td>
-                                                <td><a href="https://github.com/mapbox/mapbox-gl-native/issues/601">Not yet supported</a></td>
-                                                <td><a href="https://github.com/mapbox/mapbox-gl-native/issues/601">Not yet supported</a></td>
-                                                <td><a href="https://github.com/mapbox/mapbox-gl-native/issues/601">Not yet supported</a></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.10.0'
+                                        }
+                                    }}/>
                                 </div>
                             </div>
                         </div>
@@ -966,7 +860,11 @@ export default class extends React.Component {
                             <a id='transition' className='anchor'></a>
                             <h2><a href='#transition' title='link to transition'>Transition</a></h2>
                             <p>
-                                A style's <code>transition</code> property provides global transition defaults for that style.
+                                A <code>transition</code> property controls timing for the interpolation between a transitionable style
+                                property's previous value and new value. A style's <a href='#root-transition' title='link to root-transition'>
+                                root <code>transition</code></a> property provides global transition defaults for that style. Any transitionable
+                                style property may also have its own <code>-transition</code> property that defines specific transition timing
+                                for that specific layer property, overriding the global <code>transition</code> values.
                             </p>
                             <div className='space-bottom1 pad2x clearfix'>
                                 {highlightJSON(`"transition": ${JSON.stringify(ref.$root.transition.example, null, 2)}`)}
@@ -1130,9 +1028,10 @@ export default class extends React.Component {
                                 <a href="#expressions-get"><code>get</code></a>,
                                 <a href="#expressions-has"><code>has</code></a>,
                                 <a href="#expressions-id"><code>id</code></a>,
-                                <a href="#expressions-geometry-type"><code>geometry-type</code></a>, or
-                                <a href="#expressions-properties"><code>properties</code></a>. Data expressions allow a
-                                feature's properties to determine its appearance. They can be used to differentiate
+                                <a href="#expressions-geometry-type"><code>geometry-type</code></a>,
+                                <a href="#expressions-properties"><code>properties</code></a>, or
+                                <a href="#expressions-feature-state"><code>feature-state</code></a>. Data expressions allow a
+                                feature's properties or state to determine its appearance. They can be used to differentiate
                                 features within the same layer and to create data visualizations.</p>
 
                             <div className='col12 space-bottom'>
@@ -1159,7 +1058,9 @@ export default class extends React.Component {
                                 <a href="#layer-filter"><code>filter</code></a> property, and as values for most paint
                                 and layout properties. However, some paint and layout properties do not yet support data
                                 expressions. The level of support is indicated by the "data-driven styling" row of the
-                                "SDK Support" table for each property.</p>
+                                "SDK Support" table for each property. Data expressions with the
+                                <a href="#expressions-feature-state"><code>feature-state</code></a> operator are allowed
+                                only on paint properties.</p>
 
                             <h3>Camera expressions</h3>
                             <p>A <a id="camera-expression" className="anchor"></a><em>camera expression</em> is any
@@ -1315,38 +1216,6 @@ export default class extends React.Component {
                                 as <code>["to-number", ["get", "property-name"]]</code>.
                             </p>
 
-                            <h3>SDK Support</h3>
-                            <p>Support for expressions was introduced to Mapbox GL JS in version 0.41.0. Support in other SDKs
-                                is forthcoming.</p>
-
-                            <table className="micro space-bottom">
-                                <thead>
-                                    <tr className='fill-light'>
-                                        <th>SDK Support</th>
-                                        <td className='center'>Mapbox GL JS</td>
-                                        <td className='center'>Android SDK</td>
-                                        <td className='center'>iOS SDK</td>
-                                        <td className='center'>macOS SDK</td>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Layout and paint property expressions</td>
-                                        <td className='center'>&gt;= 0.41.0</td>
-                                        <td className='center'>Not yet supported</td>
-                                        <td className='center'>Not yet supported</td>
-                                        <td className='center'>Not yet supported</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Filter expressions</td>
-                                        <td className='center'>&gt;= 0.41.0</td>
-                                        <td className='center'>Not yet supported</td>
-                                        <td className='center'>Not yet supported</td>
-                                        <td className='center'>Not yet supported</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
                             <h3>Expression reference</h3>
 
                             <div className='keyline-all fill-white'>
@@ -1382,7 +1251,7 @@ export default class extends React.Component {
                                                 expressions.
                                             </p>}
 
-                                        {group.expressions.map(({name, doc, type}, i) =>
+                                        {group.expressions.map(({name, doc, type, sdkSupport}, i) =>
                                             <div key={i} className='col12 clearfix pad0y pad2x space-top0'>
                                                 <span className='space-right'>
                                                     <a className='code'
@@ -1392,6 +1261,7 @@ export default class extends React.Component {
                                                 </span>
                                                 {type.map((overload, i) =>
                                                     <div key={i}>{highlightJavascript(renderSignature(name, overload))}</div>)}
+                                                {sdkSupport && <div className='space-top2 space-bottom2'><SDKSupportTable {...sdkSupport} /></div>}
                                             </div>
                                         )}
                                     </div>
@@ -1534,82 +1404,61 @@ export default class extends React.Component {
                                         </div>
                                     </div>
 
-                                    <table className="micro space-bottom">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td className='center'>&gt;= 0.10.0</td>
-                                                <td className='center'>&gt;= 2.0.1</td>
-                                                <td className='center'>&gt;= 2.0.0</td>
-                                                <td className='center'>&gt;= 0.1.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>property</code></td>
-                                                <td className='center'>&gt;= 0.18.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>type</code></td>
-                                                <td className='center'>&gt;= 0.18.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>exponential</code> type</td>
-                                                <td className='center'>&gt;= 0.18.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>interval</code> type</td>
-                                                <td className='center'>&gt;= 0.18.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>categorical</code> type</td>
-                                                <td className='center'>&gt;= 0.18.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>identity</code> type</td>
-                                                <td className='center'>&gt;= 0.26.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>default</code></td>
-                                                <td className='center'>&gt;= 0.33.0</td>
-                                                <td className='center'>&gt;= 5.0.0</td>
-                                                <td className='center'>&gt;= 3.5.0</td>
-                                                <td className='center'>&gt;= 0.4.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>colorSpace</code></td>
-                                                <td className='center'>&gt;= 0.26.0</td>
-                                                <td className='center'>Not yet supported</td>
-                                                <td className='center'>Not yet supported</td>
-                                                <td className='center'>Not yet supported</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <div className="space-bottom">
+                                        <SDKSupportTable {...{
+                                            'basic functionality': {
+                                                js: '0.10.0',
+                                                android: '2.0.1',
+                                                ios: '2.0.0',
+                                                macos: '0.1.0'
+                                            },
+                                            '`property`': {
+                                                js: '0.18.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`code`': {
+                                                js: '0.18.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`exponential` type': {
+                                                js: '0.18.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`interval` type': {
+                                                js: '0.18.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`categorical` type': {
+                                                js: '0.18.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`identity` type': {
+                                                js: '0.26.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`default`': {
+                                                js: '0.33.0',
+                                                android: '5.0.0',
+                                                ios: '3.5.0',
+                                                macos: '0.4.0'
+                                            },
+                                            '`colorSpace`': {
+                                                js: '0.26.0'
+                                            }
+                                        }}/>
+                                    </div>
 
                                     <p><strong>Zoom functions</strong> allow the appearance of a map feature to change with map’s zoom level. Zoom functions can be used to create the illusion of depth and control data density. Each stop is an array with two elements: the first is a zoom level and the second is a function output value.</p>
 
@@ -1800,33 +1649,20 @@ export default class extends React.Component {
                                             ]`)}
                                     </div>
 
-                                    <table className="micro">
-                                        <thead>
-                                            <tr className='fill-light'>
-                                                <th>SDK Support</th>
-                                                <td className='center'>Mapbox GL JS</td>
-                                                <td className='center'>Android SDK</td>
-                                                <td className='center'>iOS SDK</td>
-                                                <td className='center'>macOS SDK</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>basic functionality</td>
-                                                <td className='center'>&gt;= 0.10.0<br/>deprecated &gt;= 0.41.0</td>
-                                                <td className='center'>&gt;= 2.0.1</td>
-                                                <td className='center'>&gt;= 2.0.0</td>
-                                                <td className='center'>&gt;= 0.1.0</td>
-                                            </tr>
-                                            <tr>
-                                                <td><code>has</code>/<code>!has</code></td>
-                                                <td className='center'>&gt;= 0.19.0</td>
-                                                <td className='center'>&gt;= 4.1.0</td>
-                                                <td className='center'>&gt;= 3.3.0</td>
-                                                <td className='center'>&gt;= 0.1.0</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                    <SDKSupportTable {...{
+                                        'basic functionality': {
+                                            js: '0.10.0',
+                                            android: '2.0.1',
+                                            ios: '2.0.0',
+                                            macos: '0.1.0'
+                                        },
+                                        '`has` / `!has`': {
+                                            js: '0.19.0',
+                                            android: '4.1.0',
+                                            ios: '3.3.0',
+                                            macos: '0.1.0'
+                                        }
+                                    }}/>
                                 </div>
                             </div>
 
