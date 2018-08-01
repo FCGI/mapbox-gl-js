@@ -1,6 +1,5 @@
 /rollup/build/
 /docs/components/api.json
-/dist/
 /docs/pages/dist/mapbox-gl-dev.js
 /docs/pages/dist/mapbox-gl.js
 *.js.map
