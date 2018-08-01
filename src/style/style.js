@@ -18,7 +18,8 @@ import Dispatcher from '../util/dispatcher';
 import { validateStyle, emitValidationErrors as _emitValidationErrors } from './validate_style';
 import {
     getType as getSourceType,
-    setType as setSourceType
+    setType as setSourceType,
+    type SourceClass
 } from '../source/source';
 import { queryRenderedFeatures, queryRenderedSymbols, querySourceFeatures } from '../source/query_features';
 import SourceCache from '../source/source_cache';
@@ -43,12 +44,20 @@ const emitValidationErrors = (evented: Evented, errors: ?$ReadOnlyArray<{message
 
 import type Map from '../ui/map';
 import type Transform from '../geo/transform';
-import type {Source} from '../source/source';
 import type {StyleImage} from './style_image';
 import type {StyleGlyph} from './style_glyph';
 import type {Callback} from '../types/callback';
 import type EvaluationParameters from './evaluation_parameters';
-import type { Placement } from '../symbol/placement';
+import type {Placement} from '../symbol/placement';
+import type {Cancelable} from '../types/cancelable';
+import type {GeoJSON} from '@mapbox/geojson-types';
+import type {
+    LayerSpecification,
+    FilterSpecification,
+    StyleSpecification,
+    LightSpecification,
+    SourceSpecification
+} from '../style-spec/types';
 
 const supportedDiffOperations = pick(diffOperations, [
     'addLayer',
@@ -90,6 +99,8 @@ class Style extends Evented {
     lineAtlas: LineAtlas;
     light: Light;
 
+    _request: ?Cancelable;
+    _spriteRequest: ?Cancelable;
     _layers: {[string]: StyleLayer};
     _order: Array<string>;
     sourceCaches: {[string]: SourceCache};
@@ -175,7 +186,8 @@ class Style extends Evented {
         url = normalizeStyleURL(url, options.accessToken);
         const request = this.map._transformRequest(url, ResourceType.Style);
 
-        getJSON(request, (error, json) => {
+        this._request = getJSON(request, (error, json) => {
+            this._request = null;
             if (error) {
                 this.fire(new ErrorEvent(error));
             } else if (json) {
@@ -189,7 +201,8 @@ class Style extends Evented {
     } = {}) {
         this.fire(new Event('dataloading', {dataType: 'style'}));
 
-        browser.frame(() => {
+        this._request = browser.frame(() => {
+            this._request = null;
             this._load(json, options.validate !== false);
         });
     }
@@ -207,7 +220,8 @@ class Style extends Evented {
         }
 
         if (json.sprite) {
-            loadSprite(json.sprite, this.map._transformRequest, (err, images) => {
+            this._spriteRequest = loadSprite(json.sprite, this.map._transformRequest, (err, images) => {
+                this._spriteRequest = null;
                 if (err) {
                     this.fire(new ErrorEvent(err));
                 } else if (images) {
@@ -447,6 +461,12 @@ class Style extends Evented {
         }
         this.imageManager.removeImage(id);
         this.fire(new Event('data', {dataType: 'style'}));
+    }
+
+    listImages() {
+        this._checkLoaded();
+
+        return this.imageManager.listImages();
     }
 
     addSource(id: string, source: SourceSpecification, options?: {validate?: boolean}) {
@@ -757,11 +777,8 @@ class Style extends Evented {
 
         if (deepEqual(layer.getPaintProperty(name), value)) return;
 
-        const wasDataDriven = layer._transitionablePaint._values[name].value.isDataDriven();
-        layer.setPaintProperty(name, value);
-        const isDataDriven = layer._transitionablePaint._values[name].value.isDataDriven();
-
-        if (isDataDriven || wasDataDriven) {
+        const requiresRelayout = layer.setPaintProperty(name, value);
+        if (requiresRelayout) {
             this._updateLayer(layer);
         }
 
@@ -771,6 +788,48 @@ class Style extends Evented {
 
     getPaintProperty(layer: string, name: string) {
         return this.getLayer(layer).getPaintProperty(name);
+    }
+
+    setFeatureState(feature: { source: string; sourceLayer?: string; id: string; }, state: Object) {
+        this._checkLoaded();
+        const sourceId = feature.source;
+        const sourceLayer = feature.sourceLayer;
+        const sourceCache = this.sourceCaches[sourceId];
+
+        if (sourceCache === undefined) {
+            this.fire(new ErrorEvent(new Error(`The source '${sourceId}' does not exist in the map's style.`)));
+            return;
+        }
+        const sourceType = sourceCache.getSource().type;
+        if (sourceType === 'vector' && !sourceLayer) {
+            this.fire(new ErrorEvent(new Error(`The sourceLayer parameter must be provided for vector source types.`)));
+            return;
+        }
+        if (feature.id == null || feature.id === "") {
+            this.fire(new ErrorEvent(new Error(`The feature id parameter must be provided.`)));
+            return;
+        }
+
+        sourceCache.setFeatureState(sourceLayer, feature.id, state);
+    }
+
+    getFeatureState(feature: { source: string; sourceLayer?: string; id: string; }) {
+        this._checkLoaded();
+        const sourceId = feature.source;
+        const sourceLayer = feature.sourceLayer;
+        const sourceCache = this.sourceCaches[sourceId];
+
+        if (sourceCache === undefined) {
+            this.fire(new ErrorEvent(new Error(`The source '${sourceId}' does not exist in the map's style.`)));
+            return;
+        }
+        const sourceType = sourceCache.getSource().type;
+        if (sourceType === 'vector' && !sourceLayer) {
+            this.fire(new ErrorEvent(new Error(`The sourceLayer parameter must be provided for vector source types.`)));
+            return;
+        }
+
+        return sourceCache.getFeatureState(sourceLayer, feature.id);
     }
 
     getTransition() {
@@ -846,13 +905,15 @@ class Style extends Evented {
         }
 
         const sourceResults = [];
+        const queryCoordinates = queryGeometry.map((p) => transform.pointCoordinate(p));
+
         for (const id in this.sourceCaches) {
             if (params.layers && !includedSources[id]) continue;
             sourceResults.push(
                 queryRenderedFeatures(
                     this.sourceCaches[id],
                     this._layers,
-                    queryGeometry.worldCoordinate,
+                    queryCoordinates,
                     params,
                     transform)
             );
@@ -864,7 +925,8 @@ class Style extends Evented {
             sourceResults.push(
                 queryRenderedSymbols(
                     this._layers,
-                    queryGeometry.viewport,
+                    this.sourceCaches,
+                    queryGeometry,
                     params,
                     this.placement.collisionIndex,
                     this.placement.retainedQueryData)
@@ -881,7 +943,7 @@ class Style extends Evented {
         return sourceCache ? querySourceFeatures(sourceCache, params) : [];
     }
 
-    addSourceType(name: string, SourceType: Class<Source>, callback: Callback<void>) {
+    addSourceType(name: string, SourceType: SourceClass, callback: Callback<void>) {
         if (Style.getSourceType(name)) {
             return callback(new Error(`A source type called "${name}" already exists.`));
         }
@@ -940,6 +1002,14 @@ class Style extends Evented {
     }
 
     _remove() {
+        if (this._request) {
+            this._request.cancel();
+            this._request = null;
+        }
+        if (this._spriteRequest) {
+            this._spriteRequest.cancel();
+            this._spriteRequest = null;
+        }
         rtlTextPluginEvented.off('pluginAvailable', this._rtlTextPluginCallback);
         for (const id in this.sourceCaches) {
             this.sourceCaches[id].clearTiles();
@@ -971,7 +1041,7 @@ class Style extends Evented {
         }
     }
 
-    _updatePlacement(transform: Transform, showCollisionBoxes: boolean, fadeDuration: number) {
+    _updatePlacement(transform: Transform, showCollisionBoxes: boolean, fadeDuration: number, crossSourceCollisions: boolean) {
         let symbolBucketsChanged = false;
         let placementCommitted = false;
 
@@ -983,7 +1053,7 @@ class Style extends Evented {
 
             if (!layerTiles[styleLayer.source]) {
                 const sourceCache = this.sourceCaches[styleLayer.source];
-                layerTiles[styleLayer.source] = sourceCache.getRenderableIds()
+                layerTiles[styleLayer.source] = sourceCache.getRenderableIds(true)
                     .map((id) => sourceCache.getTileByID(id))
                     .sort((a, b) => (b.tileID.overscaledZ - a.tileID.overscaledZ) || (a.tileID.isLessThan(b.tileID) ? -1 : 1));
             }
@@ -1000,7 +1070,7 @@ class Style extends Evented {
         const forceFullPlacement = this._layerOrderChanged;
 
         if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(browser.now()))) {
-            this.pauseablePlacement = new PauseablePlacement(transform, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration);
+            this.pauseablePlacement = new PauseablePlacement(transform, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions);
             this._layerOrderChanged = false;
         }
 
@@ -1037,6 +1107,12 @@ class Style extends Evented {
         // needsRender is false when we have just finished a placement that didn't change the visibility of any symbols
         const needsRerender = !this.pauseablePlacement.isDone() || this.placement.hasTransitions(browser.now());
         return needsRerender;
+    }
+
+    _releaseSymbolFadeTiles() {
+        for (const id in this.sourceCaches) {
+            this.sourceCaches[id].releaseSymbolFadeTiles();
+        }
     }
 
     // Callbacks from web workers

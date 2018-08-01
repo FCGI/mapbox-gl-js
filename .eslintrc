@@ -6,19 +6,12 @@
   ],
   "parser": "babel-eslint",
   "parserOptions": {
-    "sourceType": "script"
+    "sourceType": "module"
   },
   "plugins": [
     "flowtype",
     "import"
   ],
-  "settings": {
-    "import/ignore": [
-        "@mapbox/gl-matrix",
-        "@mapbox/shelf-pack",
-        "@mapbox/whoots-js"
-    ]
-  },
   "rules": {
     "array-bracket-spacing": "off",
     "block-scoped-var": "error",

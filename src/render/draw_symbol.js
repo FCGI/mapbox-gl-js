@@ -5,7 +5,7 @@ import drawCollisionDebug from './draw_collision_debug';
 import pixelsToTileUnits from '../source/pixels_to_tile_units';
 import * as symbolProjection from '../symbol/projection';
 import * as symbolSize from '../symbol/symbol_size';
-import { mat4 } from '@mapbox/gl-matrix';
+import { mat4 } from 'gl-matrix';
 const identityMat4 = mat4.identity(new Float32Array(16));
 import properties from '../style/style_layer/symbol_style_layer_properties';
 const symbolLayoutProperties = properties.layout;
@@ -63,7 +63,7 @@ function drawLayerSymbols(painter, sourceCache, layer, coords, isText, translate
 
     const rotateWithMap = rotationAlignment === 'map';
     const pitchWithMap = pitchAlignment === 'map';
-    const alongLine = rotateWithMap && layer.layout.get('symbol-placement') === 'line';
+    const alongLine = rotateWithMap && layer.layout.get('symbol-placement') !== 'point';
     // Line label rotation happens in `updateLineLabels`
     // Pitched point labels are automatically rotated by the labelPlaneMatrix projection
     // Unpitched point labels need to have their rotation applied after projection

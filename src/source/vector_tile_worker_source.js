@@ -6,7 +6,7 @@ import vt from '@mapbox/vector-tile';
 import Protobuf from 'pbf';
 import WorkerTile from './worker_tile';
 import { extend } from '../util/util';
-import perf from '../util/performance';
+import performance from '../util/performance';
 
 import type {
     WorkerSource,
@@ -57,7 +57,7 @@ function loadVectorTile(params: WorkerTileParameters, callback: LoadVectorDataCa
             callback();
         }
     }else{
-        const xhr = getArrayBuffer(params.request, (err, response) => {
+        const request = getArrayBuffer(params.request, (err, response) => {
             if (err) {
                 callback(err);
             } else if (response) {
@@ -69,9 +69,8 @@ function loadVectorTile(params: WorkerTileParameters, callback: LoadVectorDataCa
                 });
             }
         });
-
         return () => {
-            xhr.abort();
+            request.cancel();
             callback();
         };
     }
@@ -119,6 +118,9 @@ class VectorTileWorkerSource implements WorkerSource {
         if (!this.loading)
             this.loading = {};
 
+        const perf = (params && params.request && params.request.collectResourceTiming) ?
+            new performance.Performance(params.request) : false;
+
         const workerTile = this.loading[uid] = new WorkerTile(params);
         workerTile.abort = this.loadVectorData(params, (err, response) => {
             delete this.loading[uid];
@@ -131,9 +133,10 @@ class VectorTileWorkerSource implements WorkerSource {
             const cacheControl = {};
             if (response.expires) cacheControl.expires = response.expires;
             if (response.cacheControl) cacheControl.cacheControl = response.cacheControl;
+
             const resourceTiming = {};
-            if (params.request && params.request.collectResourceTiming) {
-                const resourceTimingData = perf.getEntriesByName(params.request.url);
+            if (perf) {
+                const resourceTimingData = perf.finish();
                 // it's necessary to eval the result of getEntriesByName() here via parse/stringify
                 // late evaluation in the main thread causes TypeError: illegal invocation
                 if (resourceTimingData)

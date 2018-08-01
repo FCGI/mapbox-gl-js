@@ -8,7 +8,10 @@
       ]
     },
     "type": "Feature",
-    "properties": {}
+    "properties": {},
+    "id": 108,
+    "source": "geojson",
+    "state": {}
   },
   {
     "geometry": {
@@ -19,7 +22,10 @@
       ]
     },
     "type": "Feature",
-    "properties": {}
+    "properties": {},
+    "id": 119,
+    "source": "geojson",
+    "state": {}
   },
   {
     "geometry": {
@@ -30,7 +36,10 @@
       ]
     },
     "type": "Feature",
-    "properties": {}
+    "properties": {},
+    "id": 107,
+    "source": "geojson",
+    "state": {}
   },
   {
     "geometry": {
@@ -41,7 +50,10 @@
       ]
     },
     "type": "Feature",
-    "properties": {}
+    "properties": {},
+    "id": 106,
+    "source": "geojson",
+    "state": {}
   },
   {
     "geometry": {
@@ -52,7 +64,10 @@
       ]
     },
     "type": "Feature",
-    "properties": {}
+    "properties": {},
+    "id": 96,
+    "source": "geojson",
+    "state": {}
   },
   {
     "geometry": {
@@ -63,6 +78,9 @@
       ]
     },
     "type": "Feature",
-    "properties": {}
+    "properties": {},
+    "id": 118,
+    "source": "geojson",
+    "state": {}
   }
 ]

@@ -3,7 +3,6 @@
 import { Event, ErrorEvent, Evented } from '../util/evented';
 
 import { extend } from '../util/util';
-import window from '../util/window';
 import EXTENT from '../data/extent';
 import { ResourceType } from '../util/ajax';
 import browser from '../util/browser';
@@ -14,6 +13,8 @@ import type Dispatcher from '../util/dispatcher';
 import type Tile from './tile';
 import type {Callback} from '../types/callback';
 import type {PerformanceResourceTiming} from '../types/performance_resource_timing';
+import type {GeoJSON, GeoJSONFeature} from '@mapbox/geojson-types';
+import type {GeoJSONSourceSpecification} from '../style-spec/types';
 
 /**
  * A source containing GeoJSON.
@@ -66,6 +67,7 @@ class GeoJSONSource extends Evented implements Source {
     minzoom: number;
     maxzoom: number;
     tileSize: number;
+    attribution: string;
 
     isTileClipped: boolean;
     reparseOverscaled: boolean;
@@ -83,7 +85,7 @@ class GeoJSONSource extends Evented implements Source {
     /**
      * @private
      */
-    constructor(id: string, options: GeojsonSourceSpecification & {workerOptions?: any, collectResourceTiming: boolean}, dispatcher: Dispatcher, eventedParent: Evented) {
+    constructor(id: string, options: GeoJSONSourceSpecification & {workerOptions?: any, collectResourceTiming: boolean}, dispatcher: Dispatcher, eventedParent: Evented) {
         super();
 
         this.id = id;
@@ -110,6 +112,7 @@ class GeoJSONSource extends Evented implements Source {
 
         if (options.maxzoom !== undefined) this.maxzoom = options.maxzoom;
         if (options.type) this.type = options.type;
+        if (options.attribution) this.attribution = options.attribution;
 
         const scale = EXTENT / this.tileSize;
 
@@ -174,7 +177,8 @@ class GeoJSONSource extends Evented implements Source {
         this.fire(new Event('dataloading', {dataType: 'source'}));
         this._updateWorkerData((err) => {
             if (err) {
-                return this.fire(new ErrorEvent(err));
+                this.fire(new ErrorEvent(err));
+                return;
             }
 
             const data: Object = { dataType: 'source', sourceDataType: 'content' };
@@ -188,25 +192,68 @@ class GeoJSONSource extends Evented implements Source {
         return this;
     }
 
+    /**
+     * For clustered sources, fetches the zoom at which the given cluster expands.
+     *
+     * @param clusterId The value of the cluster's `cluster_id` property.
+     * @param callback A callback to be called when the zoom value is retrieved (`(error, zoom) => { ... }`).
+     * @returns {GeoJSONSource} this
+     */
+    getClusterExpansionZoom(clusterId: number, callback: Callback<number>) {
+        this.dispatcher.send('geojson.getClusterExpansionZoom', { clusterId, source: this.id }, callback, this.workerID);
+        return this;
+    }
+
+    /**
+     * For clustered sources, fetches the children of the given cluster on the next zoom level (as an array of GeoJSON features).
+     *
+     * @param clusterId The value of the cluster's `cluster_id` property.
+     * @param callback A callback to be called when the features are retrieved (`(error, features) => { ... }`).
+     * @returns {GeoJSONSource} this
+     */
+    getClusterChildren(clusterId: number, callback: Callback<Array<GeoJSONFeature>>) {
+        this.dispatcher.send('geojson.getClusterChildren', { clusterId, source: this.id }, callback, this.workerID);
+        return this;
+    }
+
+    /**
+     * For clustered sources, fetches the original points that belong to the cluster (as an array of GeoJSON features).
+     *
+     * @param clusterId The value of the cluster's `cluster_id` property.
+     * @param limit The maximum number of features to return.
+     * @param offset The number of features to skip (e.g. for pagination).
+     * @param callback A callback to be called when the features are retrieved (`(error, features) => { ... }`).
+     * @returns {GeoJSONSource} this
+     */
+    getClusterLeaves(clusterId: number, limit: number, offset: number, callback: Callback<Array<GeoJSONFeature>>) {
+        this.dispatcher.send('geojson.getClusterLeaves', {
+            source: this.id,
+            clusterId,
+            limit,
+            offset
+        }, callback, this.workerID);
+        return this;
+    }
+
     /*
      * Responsible for invoking WorkerSource's geojson.loadData target, which
      * handles loading the geojson data and preparing to serve it up as tiles,
      * using geojson-vt or supercluster as appropriate.
      */
-    _updateWorkerData(callback: Function) {
+    _updateWorkerData(callback: Callback<void>) {
         const options = extend({}, this.workerOptions);
         const data = this._data;
         if (typeof data === 'string') {
-            options.request = this.map._transformRequest(resolveURL(data), ResourceType.Source);
+            options.request = this.map._transformRequest(browser.resolveURL(data), ResourceType.Source);
             options.request.collectResourceTiming = this._collectResourceTiming;
         } else {
             options.data = JSON.stringify(data);
         }
 
-        // target {this.type}.{options.source}.loadData rather than literally geojson.loadData,
+        // target {this.type}.loadData rather than literally geojson.loadData,
         // so that other geojson-like source types can easily reuse this
         // implementation
-        this.workerID = this.dispatcher.send(`${this.type}.${options.source}.loadData`, options, (err, result) => {
+        this.workerID = this.dispatcher.send(`${this.type}.loadData`, options, (err, result) => {
             if (this._removed || (result && result.abandoned)) {
                 return;
             }
@@ -222,7 +269,7 @@ class GeoJSONSource extends Evented implements Source {
             // message queue. Waiting instead for the 'coalesce' to round-trip
             // through the foreground just means we're throttling the worker
             // to run at a little less than full-throttle.
-            this.dispatcher.send(`${this.type}.${options.source}.coalesce`, null, null, this.workerID);
+            this.dispatcher.send(`${this.type}.coalesce`, { source: options.source }, null, this.workerID);
             callback(err);
 
         }, this.workerID);
@@ -283,12 +330,6 @@ class GeoJSONSource extends Evented implements Source {
     hasTransition() {
         return false;
     }
-}
-
-function resolveURL(url) {
-    const a = window.document.createElement('a');
-    a.href = url;
-    return a.href;
 }
 
 export default GeoJSONSource;

@@ -2,7 +2,6 @@
 import assert from 'assert';
 import supported from '@mapbox/mapbox-gl-supported';
 
-import browser from './util/browser';
 import { version } from '../package.json';
 import Map from './ui/map';
 import NavigationControl from './ui/control/navigation_control';
@@ -22,11 +21,11 @@ import {setRTLTextPlugin} from './source/rtl_text_plugin';
 //fc-offline-start
 import * as mapbox from './util/mapbox';
 //fc-offline-end
+import WorkerPool from './util/worker_pool';
 
 const exported = {
     version,
     supported,
-    workerCount: Math.max(Math.floor(browser.hardwareConcurrency / 2), 1),
     setRTLTextPlugin: setRTLTextPlugin,
     Map,
     NavigationControl,
@@ -50,6 +49,12 @@ const exported = {
     },
     set accessToken(token: string) {
         config.ACCESS_TOKEN = token;
+    },
+    get workerCount() {
+        return WorkerPool.workerCount;
+    },
+    set workerCount(count: number) {
+        WorkerPool.workerCount = count;
     },
     workerUrl: ''
 };

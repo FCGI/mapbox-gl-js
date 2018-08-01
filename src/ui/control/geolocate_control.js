@@ -129,7 +129,7 @@ class GeolocateControl extends Evented {
         }
 
         // clear the marker from the map
-        if (this.options.showUserLocation) {
+        if (this.options.showUserLocation && this._userLocationDotMarker) {
             this._userLocationDotMarker.remove();
         }
 
@@ -259,7 +259,10 @@ class GeolocateControl extends Evented {
     }
 
     _setupUI(supported: boolean) {
-        if (supported === false) return;
+        if (supported === false) {
+            warnOnce('Geolocation support is not available, the GeolocateControl will not be visible.');
+            return;
+        }
         this._container.addEventListener('contextmenu', (e: MouseEvent) => e.preventDefault());
         this._geolocateButton = DOM.create('button',
             `${className}-icon ${className}-geolocate`,

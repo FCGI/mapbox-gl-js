@@ -8,11 +8,13 @@ import { translateDistance, translate } from '../query_utils';
 import properties from './fill_extrusion_style_layer_properties';
 import { Transitionable, Transitioning, PossiblyEvaluated } from '../properties';
 
+import type { FeatureState } from '../../style-spec/expression';
 import type {BucketParameters} from '../../data/bucket';
 import type Point from '@mapbox/point-geometry';
 import type {PaintProps} from './fill_extrusion_style_layer_properties';
 import type Framebuffer from '../../gl/framebuffer';
 import type Transform from '../../geo/transform';
+import type {LayerSpecification} from '../../style-spec/types';
 
 class FillExtrusionStyleLayer extends StyleLayer {
     _transitionablePaint: Transitionable<PaintProps>;
@@ -34,6 +36,7 @@ class FillExtrusionStyleLayer extends StyleLayer {
 
     queryIntersectsFeature(queryGeometry: Array<Array<Point>>,
                            feature: VectorTileFeature,
+                           featureState: FeatureState,
                            geometry: Array<Array<Point>>,
                            zoom: number,
                            transform: Transform,

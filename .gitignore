@@ -5,7 +5,6 @@
 /docs/pages/dist/mapbox-gl.js
 *.js.map
 node_modules
-npm-debug.log
 package-lock.json
 *.sublime-*
 coverage
@@ -25,3 +24,5 @@ src/style-spec/dist/index.js
 _batfish_site
 _batfish_tmp
 yarn-error.log
+yarn-debug.log
+npm-debug.log

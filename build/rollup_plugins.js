@@ -29,9 +29,9 @@ export const plugins = () => [
         include: 'src/shaders/index.js'
     }),
     commonjs({
-        namedExports: {
-            '@mapbox/gl-matrix': ['vec3', 'vec4', 'mat2', 'mat3', 'mat4']
-        }
+        // global keyword handling causes Webpack compatibility issues, so we disabled it:
+        // https://github.com/mapbox/mapbox-gl-js/pull/6956
+        ignoreGlobal: true
     }),
     production ? uglify() : false
 ].filter(Boolean);

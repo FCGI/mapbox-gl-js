@@ -15,6 +15,7 @@ import SegmentVector from '../data/segment';
 import { TriangleIndexArray } from '../data/index_array_type';
 import browser from '../util/browser';
 import EvaluationParameters from '../style/evaluation_parameters';
+import SourceFeatureState from '../source/source_state';
 
 const CLOCK_SKEW_RETRY_TIMEOUT = 30000;
 
@@ -31,6 +32,9 @@ import type {OverscaledTileID} from './tile_id';
 import type Framebuffer from '../gl/framebuffer';
 import type {PerformanceResourceTiming} from '../types/performance_resource_timing';
 import type Transform from '../geo/transform';
+import type {LayerFeatureStates} from './source_state';
+import type {Cancelable} from '../types/cancelable';
+import type {FilterSpecification} from '../style-spec/types';
 
 export type TileState =
     | 'loading'   // Tile data is in the process of loading.
@@ -78,8 +82,8 @@ class Tile {
     maskedBoundsBuffer: ?VertexBuffer;
     maskedIndexBuffer: ?IndexBuffer;
     segments: ?SegmentVector;
-    needsHillshadePrepare: ?boolean
-    request: any;
+    needsHillshadePrepare: ?boolean;
+    request: ?Cancelable;
     texture: any;
     fbo: ?Framebuffer;
     demTexture: ?Texture;
@@ -87,6 +91,9 @@ class Tile {
     reloadCallback: any;
     resourceTiming: ?Array<PerformanceResourceTiming>;
     queryPadding: number;
+
+    symbolFadeHoldUntil: ?number;
+    hasSymbolBuckets: boolean;
 
     /**
      * @param {OverscaledTileID} tileID
@@ -100,6 +107,7 @@ class Tile {
         this.buckets = {};
         this.expirationTime = null;
         this.queryPadding = 0;
+        this.hasSymbolBuckets = false;
 
         // Counts the number of times a response was already expired when
         // received. We're using this to add a delay when making a new request
@@ -161,11 +169,15 @@ class Tile {
         this.collisionBoxArray = data.collisionBoxArray;
         this.buckets = deserializeBucket(data.buckets, painter.style);
 
-        if (justReloaded) {
-            for (const id in this.buckets) {
-                const bucket = this.buckets[id];
-                if (bucket instanceof SymbolBucket) {
+        this.hasSymbolBuckets = false;
+        for (const id in this.buckets) {
+            const bucket = this.buckets[id];
+            if (bucket instanceof SymbolBucket) {
+                this.hasSymbolBuckets = true;
+                if (justReloaded) {
                     bucket.justReloaded = true;
+                } else {
+                    break;
                 }
             }
         }
@@ -219,9 +231,8 @@ class Tile {
     upload(context: Context) {
         for (const id in this.buckets) {
             const bucket = this.buckets[id];
-            if (!bucket.uploaded) {
+            if (bucket.uploadPending()) {
                 bucket.upload(context);
-                bucket.uploaded = true;
             }
         }
 
@@ -241,6 +252,7 @@ class Tile {
     // Queries non-symbol features rendered for this tile.
     // Symbol features are queried globally
     queryRenderedFeatures(layers: {[string]: StyleLayer},
+                          sourceFeatureState: SourceFeatureState,
                           queryGeometry: Array<Array<Point>>,
                           scale: number,
                           params: { filter: FilterSpecification, layers: Array<string> },
@@ -258,7 +270,7 @@ class Tile {
             transform: transform,
             params: params,
             queryPadding: this.queryPadding * maxPitchScaleFactor
-        }, layers);
+        }, layers, sourceFeatureState);
     }
 
     querySourceFeatures(result: Array<GeoJSONFeature>, params: any) {
@@ -412,6 +424,45 @@ class Tile {
         }
     }
 
+    setFeatureState(states: LayerFeatureStates, painter: any) {
+        if (!this.latestFeatureIndex ||
+            !this.latestFeatureIndex.rawTileData ||
+            Object.keys(states).length === 0) {
+            return;
+        }
+
+        const vtLayers = this.latestFeatureIndex.loadVTLayers();
+
+        for (const i in this.buckets) {
+            const bucket = this.buckets[i];
+            // Buckets are grouped by common source-layer
+            const sourceLayerId = bucket.layers[0]['sourceLayer'] || '_geojsonTileLayer';
+            const sourceLayer = vtLayers[sourceLayerId];
+            const sourceLayerStates = states[sourceLayerId];
+            if (!sourceLayer || !sourceLayerStates || Object.keys(sourceLayerStates).length === 0) continue;
+
+            bucket.update(sourceLayerStates, sourceLayer);
+            if (painter && painter.style) {
+                this.queryPadding = Math.max(this.queryPadding, painter.style.getLayer(bucket.layerIds[0]).queryRadius(bucket));
+            }
+        }
+    }
+
+    holdingForFade(): boolean {
+        return this.symbolFadeHoldUntil !== undefined;
+    }
+
+    symbolFadeFinished(): boolean {
+        return !this.symbolFadeHoldUntil || this.symbolFadeHoldUntil < browser.now();
+    }
+
+    clearFadeHold() {
+        this.symbolFadeHoldUntil = undefined;
+    }
+
+    setHoldDuration(duration: number) {
+        this.symbolFadeHoldUntil = browser.now() + duration;
+    }
 }
 
 export default Tile;

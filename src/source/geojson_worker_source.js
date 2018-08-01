@@ -2,7 +2,7 @@
 
 import { getJSON } from '../util/ajax';
 
-import perf from '../util/performance';
+import performance from '../util/performance';
 import rewind from 'geojson-rewind';
 import GeoJSONWrapper from './geojson_wrapper';
 import vtpbf from 'vt-pbf';
@@ -22,13 +22,13 @@ import type StyleLayerIndex from '../style/style_layer_index';
 import type {LoadVectorDataCallback} from './vector_tile_worker_source';
 import type {RequestParameters} from '../util/ajax';
 import type { Callback } from '../types/callback';
-
-export type GeoJSON = Object;
+import type {GeoJSONFeature} from '@mapbox/geojson-types';
 
 export type LoadGeoJSONParameters = {
     request?: RequestParameters,
     data?: string,
     source: string,
+    cluster: boolean,
     superclusterOptions?: Object,
     geojsonVtOptions?: Object
 };
@@ -36,6 +36,12 @@ export type LoadGeoJSONParameters = {
 export type LoadGeoJSON = (params: LoadGeoJSONParameters, callback: Callback<mixed>) => void;
 
 export interface GeoJSONIndex {
+    getTile(z: number, x: number, y: number): Object;
+
+    // supercluster methods
+    getClusterExpansionZoom(clusterId: number): number;
+    getChildren(clusterId: number): Array<GeoJSONFeature>;
+    getLeaves(clusterId: number, limit: number, offset: number): Array<GeoJSONFeature>;
 }
 
 function loadGeoJSONTile(params: WorkerTileParameters, callback: LoadVectorDataCallback) {
@@ -52,7 +58,7 @@ function loadGeoJSONTile(params: WorkerTileParameters, callback: LoadVectorDataC
 
     const geojsonWrapper = new GeoJSONWrapper(geoJSONTile.features);
 
-    // Encode the geojson-vt tile into binary vector tile form form.  This
+    // Encode the geojson-vt tile into binary vector tile form.  This
     // is a convenience that allows `FeatureIndex` to operate the same way
     // across `VectorTileSource` and `GeoJSONSource` data.
     let pbf = vtpbf(geojsonWrapper);
@@ -151,6 +157,10 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
         const params = this._pendingLoadDataParams;
         delete this._pendingCallback;
         delete this._pendingLoadDataParams;
+
+        const perf = (params && params.request && params.request.collectResourceTiming) ?
+            new performance.Performance(params.request) : false;
+
         this.loadGeoJSON(params, (err, data) => {
             if (err || !data) {
                 return callback(err);
@@ -170,8 +180,8 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
                 this.loaded = {};
 
                 const result = {};
-                if (params.request && params.request.collectResourceTiming) {
-                    const resourceTimingData = perf.getEntriesByName(params.request.url);
+                if (perf) {
+                    const resourceTimingData = perf.finish();
                     // it's necessary to eval the result of getEntriesByName() here via parse/stringify
                     // late evaluation in the main thread causes TypeError: illegal invocation
                     if (resourceTimingData) {
@@ -268,6 +278,18 @@ class GeoJSONWorkerSource extends VectorTileWorkerSource {
             this._pendingCallback(null, { abandoned: true });
         }
         callback();
+    }
+
+    getClusterExpansionZoom(params: {clusterId: number}, callback: Callback<number>) {
+        callback(null, this._geoJSONIndex.getClusterExpansionZoom(params.clusterId));
+    }
+
+    getClusterChildren(params: {clusterId: number}, callback: Callback<Array<GeoJSONFeature>>) {
+        callback(null, this._geoJSONIndex.getChildren(params.clusterId));
+    }
+
+    getClusterLeaves(params: {clusterId: number, limit: number, offset: number}, callback: Callback<Array<GeoJSONFeature>>) {
+        callback(null, this._geoJSONIndex.getLeaves(params.clusterId, params.limit, params.offset));
     }
 }
 

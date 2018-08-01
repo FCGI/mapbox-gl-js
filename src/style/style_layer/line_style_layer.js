@@ -13,10 +13,12 @@ import EvaluationParameters from '../evaluation_parameters';
 import renderColorRamp from '../../util/color_ramp';
 import { Transitionable, Transitioning, Layout, PossiblyEvaluated, DataDrivenProperty } from '../properties';
 
+import type { FeatureState } from '../../style-spec/expression';
 import type {Bucket, BucketParameters} from '../../data/bucket';
 import type {LayoutProps, PaintProps} from './line_style_layer_properties';
 import type Transform from '../../geo/transform';
 import type Texture from '../../render/texture';
+import type {LayerSpecification} from '../../style-spec/types';
 
 class LineFloorwidthProperty extends DataDrivenProperty<number> {
     useIntegerZoom: true;
@@ -31,9 +33,9 @@ class LineFloorwidthProperty extends DataDrivenProperty<number> {
         return super.possiblyEvaluate(value, parameters);
     }
 
-    evaluate(value, globals, feature) {
+    evaluate(value, globals, feature, featureState) {
         globals = extend({}, globals, {zoom: Math.floor(globals.zoom)});
-        return super.evaluate(value, globals, feature);
+        return super.evaluate(value, globals, feature, featureState);
     }
 }
 
@@ -55,8 +57,7 @@ class LineStyleLayer extends StyleLayer {
         super(layer, properties);
     }
 
-    setPaintProperty(name: string, value: mixed, options: {validate: boolean}) {
-        super.setPaintProperty(name, value, options);
+    _handleSpecialPaintPropertyUpdate(name: string) {
         if (name === 'line-gradient') {
             this._updateGradient();
         }
@@ -90,6 +91,7 @@ class LineStyleLayer extends StyleLayer {
 
     queryIntersectsFeature(queryGeometry: Array<Array<Point>>,
                            feature: VectorTileFeature,
+                           featureState: FeatureState,
                            geometry: Array<Array<Point>>,
                            zoom: number,
                            transform: Transform,
@@ -99,9 +101,9 @@ class LineStyleLayer extends StyleLayer {
             this.paint.get('line-translate-anchor'),
             transform.angle, pixelsToTileUnits);
         const halfWidth = pixelsToTileUnits / 2 * getLineWidth(
-            this.paint.get('line-width').evaluate(feature),
-            this.paint.get('line-gap-width').evaluate(feature));
-        const lineOffset = this.paint.get('line-offset').evaluate(feature);
+            this.paint.get('line-width').evaluate(feature, featureState),
+            this.paint.get('line-gap-width').evaluate(feature, featureState));
+        const lineOffset = this.paint.get('line-offset').evaluate(feature, featureState);
         if (lineOffset) {
             geometry = offsetLine(geometry, lineOffset * pixelsToTileUnits);
         }

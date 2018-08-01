@@ -86,9 +86,10 @@ A standalone build allows you to turn the contents of this repository into `mapb
 To create a standalone build, run
 ```bash
 yarn run build-min
+yarn run build-css
 ```
 
-Once that command finishes, you will have a standalone build at `dist/mapbox-gl.js` and `dist/mapbox-gl.css`
+Once those commands finish, you will have a standalone build at `dist/mapbox-gl.js` and `dist/mapbox-gl.css`
 
 ## Writing & Running Tests
 
@@ -158,7 +159,7 @@ We have divided our labels into categories to make them easier to use.
 ### GL Performance
 
 - [Debugging and Optimizing WebGL applications](https://docs.google.com/presentation/d/12AGAUmElB0oOBgbEEBfhABkIMCL3CUX7kdAPLuwZ964)
-- [Graphics Pipeline Performance](http://http.developer.nvidia.com/GPUGems/gpugems_ch28.html)
+- [Graphics Pipeline Performance](http://developer.download.nvidia.com/books/HTML/gpugems/gpugems_ch28.html)
 
 ### Misc
 

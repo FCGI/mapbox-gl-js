@@ -11,9 +11,14 @@ import EvaluationParameters from './evaluation_parameters';
 
 import type {StylePropertySpecification} from '../style-spec/style-spec';
 import type {CrossFaded} from './cross_faded';
+import type {
+    TransitionSpecification,
+    PropertyValueSpecification
+} from '../style-spec/types';
 
 import type {
     Feature,
+    FeatureState,
     GlobalProperties,
     StylePropertyExpression,
     SourceExpression,
@@ -445,8 +450,8 @@ export class PossiblyEvaluatedPropertyValue<T> {
         }
     }
 
-    evaluate(feature: Feature): T {
-        return this.property.evaluate(this.value, this.globals, feature);
+    evaluate(feature: Feature, featureState: FeatureState): T {
+        return this.property.evaluate(this.value, this.globals, feature, featureState);
     }
 }
 
@@ -567,11 +572,11 @@ export class DataDrivenProperty<T> implements Property<T, PossiblyEvaluatedPrope
         }
     }
 
-    evaluate(value: PossiblyEvaluatedValue<T>, globals: GlobalProperties, feature: Feature): T {
+    evaluate(value: PossiblyEvaluatedValue<T>, globals: GlobalProperties, feature: Feature, featureState: FeatureState): T {
         if (value.kind === 'constant') {
             return value.value;
         } else {
-            return value.evaluate(globals, feature);
+            return value.evaluate(globals, feature, featureState);
         }
     }
 }
