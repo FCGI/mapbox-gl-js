@@ -58,6 +58,10 @@ const plugins = {
             "description": "adds right-to-left text support to Mapbox GL JS",
             "example": "mapbox-gl-rtl-text"
         },
+        "mapbox-gl-traffic": {
+            "website": "https://github.com/mapbox/mapbox-gl-traffic",
+            "description": "hide and show traffic layers on your map with an optional toggle button"
+        },
         "deck.gl": {
             "website": "https://github.com/uber/deck.gl",
             "description": "adds advanced WebGL visualization layers to Mapbox GL JS"
@@ -83,6 +87,10 @@ const plugins = {
         "ngx-mapbox-gl": {
             "website": "https://github.com/Wykks/ngx-mapbox-gl",
             "description": md`provides an [Angular](https://angular.io/) integration for Mapbox GL JS`
+        },
+        "elm-mapbox": {
+            "website": "https://package.elm-lang.org/packages/gampleman/elm-mapbox/latest/",
+            "description": md`provides an [Elm](https://elm-lang.org) integration for Mapbox GL JS`
         }
     },
     "Utility Libraries": {

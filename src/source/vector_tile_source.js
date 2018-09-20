@@ -4,7 +4,7 @@ import { Event, ErrorEvent, Evented } from '../util/evented';
 
 import { extend, pick } from '../util/util';
 import loadTileJSON from './load_tilejson';
-import { normalizeTileURL as normalizeURL } from '../util/mapbox';
+import { normalizeTileURL as normalizeURL, postTurnstileEvent } from '../util/mapbox';
 import TileBounds from './tile_bounds';
 import { ResourceType } from '../util/ajax';
 import browser from '../util/browser';
@@ -76,6 +76,8 @@ class VectorTileSource extends Evented implements Source {
             } else if (tileJSON) {
                 extend(this, tileJSON);
                 if (tileJSON.bounds) this.tileBounds = new TileBounds(tileJSON.bounds, this.minzoom, this.maxzoom);
+
+                postTurnstileEvent(tileJSON.tiles);
 
                 // `content` is included here to prevent a race condition where `Style#_updateSources` is called
                 // before the TileJSON arrives. this makes sure the tiles needed are loaded once TileJSON arrives
@@ -179,14 +181,14 @@ class VectorTileSource extends Evented implements Source {
             if (tile.aborted)
                 return callback(null);
 
-            if (err) {
+            if (err && err.status !== 404) {
                 return callback(err);
             }
 
             if (data && data.resourceTiming)
                 tile.resourceTiming = data.resourceTiming;
 
-            if (this.map._refreshExpiredTiles) tile.setExpiryData(data);
+            if (this.map._refreshExpiredTiles && data) tile.setExpiryData(data);
             tile.loadVectorData(data, this.map.painter);
 
             callback(null);

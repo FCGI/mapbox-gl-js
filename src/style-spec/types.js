@@ -4,6 +4,8 @@
 
 export type ColorSpecification = string;
 
+export type FormattedSpecification = string;
+
 export type FilterSpecification =
     | ['has', string]
     | ['!has', string]
@@ -119,7 +121,8 @@ export type GeoJSONSourceSpecification = {|
     "cluster"?: boolean,
     "clusterRadius"?: number,
     "clusterMaxZoom"?: number,
-    "lineMetrics"?: boolean
+    "lineMetrics"?: boolean,
+    "generateId"?: boolean
 |}
 
 export type VideoSourceSpecification = {|
@@ -161,7 +164,7 @@ export type FillLayerSpecification = {|
         "fill-outline-color"?: DataDrivenPropertyValueSpecification<ColorSpecification>,
         "fill-translate"?: PropertyValueSpecification<[number, number]>,
         "fill-translate-anchor"?: PropertyValueSpecification<"map" | "viewport">,
-        "fill-pattern"?: PropertyValueSpecification<string>
+        "fill-pattern"?: DataDrivenPropertyValueSpecification<string>
     |}
 |}
 
@@ -191,7 +194,7 @@ export type LineLayerSpecification = {|
         "line-offset"?: DataDrivenPropertyValueSpecification<number>,
         "line-blur"?: DataDrivenPropertyValueSpecification<number>,
         "line-dasharray"?: PropertyValueSpecification<Array<number>>,
-        "line-pattern"?: PropertyValueSpecification<string>,
+        "line-pattern"?: DataDrivenPropertyValueSpecification<string>,
         "line-gradient"?: ExpressionSpecification
     |}
 |}
@@ -209,6 +212,7 @@ export type SymbolLayerSpecification = {|
         "symbol-placement"?: PropertyValueSpecification<"point" | "line" | "line-center">,
         "symbol-spacing"?: PropertyValueSpecification<number>,
         "symbol-avoid-edges"?: PropertyValueSpecification<boolean>,
+        "symbol-z-order"?: PropertyValueSpecification<"viewport-y" | "source">,
         "icon-allow-overlap"?: PropertyValueSpecification<boolean>,
         "icon-ignore-placement"?: PropertyValueSpecification<boolean>,
         "icon-optional"?: PropertyValueSpecification<boolean>,
@@ -225,7 +229,7 @@ export type SymbolLayerSpecification = {|
         "icon-pitch-alignment"?: PropertyValueSpecification<"map" | "viewport" | "auto">,
         "text-pitch-alignment"?: PropertyValueSpecification<"map" | "viewport" | "auto">,
         "text-rotation-alignment"?: PropertyValueSpecification<"map" | "viewport" | "auto">,
-        "text-field"?: DataDrivenPropertyValueSpecification<string>,
+        "text-field"?: DataDrivenPropertyValueSpecification<FormattedSpecification>,
         "text-font"?: DataDrivenPropertyValueSpecification<Array<string>>,
         "text-size"?: DataDrivenPropertyValueSpecification<number>,
         "text-max-width"?: DataDrivenPropertyValueSpecification<number>,
@@ -327,7 +331,7 @@ export type FillExtrusionLayerSpecification = {|
         "fill-extrusion-color"?: DataDrivenPropertyValueSpecification<ColorSpecification>,
         "fill-extrusion-translate"?: PropertyValueSpecification<[number, number]>,
         "fill-extrusion-translate-anchor"?: PropertyValueSpecification<"map" | "viewport">,
-        "fill-extrusion-pattern"?: PropertyValueSpecification<string>,
+        "fill-extrusion-pattern"?: DataDrivenPropertyValueSpecification<string>,
         "fill-extrusion-height"?: DataDrivenPropertyValueSpecification<number>,
         "fill-extrusion-base"?: DataDrivenPropertyValueSpecification<number>
     |}

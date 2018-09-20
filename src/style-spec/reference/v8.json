@@ -70,12 +70,12 @@
     },
     "sprite": {
       "type": "string",
-      "doc": "A base URL for retrieving the sprite image and metadata. The extensions `.png`, `.json` and scale factor `@2x.png` will be automatically appended. This property is required if any layer uses the `background-pattern`, `fill-pattern`, `line-pattern`, `fill-extrusion-pattern`, or `icon-image` properties.",
+      "doc": "A base URL for retrieving the sprite image and metadata. The extensions `.png`, `.json` and scale factor `@2x.png` will be automatically appended. This property is required if any layer uses the `background-pattern`, `fill-pattern`, `line-pattern`, `fill-extrusion-pattern`, or `icon-image` properties. The URL must be absolute, containing the [scheme, authority and path components](https://en.wikipedia.org/wiki/URL#Syntax).",
       "example": "mapbox://sprites/mapbox/bright-v8"
     },
     "glyphs": {
       "type": "string",
-      "doc": "A URL template for loading signed-distance-field glyph sets in PBF format. The URL must include `{fontstack}` and `{range}` tokens. This property is required if any layer uses the `text-field` layout property.",
+      "doc": "A URL template for loading signed-distance-field glyph sets in PBF format. The URL must include `{fontstack}` and `{range}` tokens. This property is required if any layer uses the `text-field` layout property. The URL must be absolute, containing the [scheme, authority and path components](https://en.wikipedia.org/wiki/URL#Syntax).",
       "example": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf"
     },
     "transition": {
@@ -144,9 +144,9 @@
       "length": 4,
       "default": [
         -180,
-        -85.0511,
+        -85.051129,
         180,
-        85.0511
+        85.051129
       ],
       "doc": "An array containing the longitude and latitude of the southwest and northeast corners of the source's bounding box in the following order: `[sw.lng, sw.lat, ne.lng, ne.lat]`. When this property is included in a source, no tiles outside of the given bounds are requested by Mapbox GL."
     },
@@ -208,9 +208,9 @@
       "length": 4,
       "default": [
         -180,
-        -85.0511,
+        -85.051129,
         180,
-        85.0511
+        85.051129
       ],
       "doc": "An array containing the longitude and latitude of the southwest and northeast corners of the source's bounding box in the following order: `[sw.lng, sw.lat, ne.lng, ne.lat]`. When this property is included in a source, no tiles outside of the given bounds are requested by Mapbox GL."
     },
@@ -278,9 +278,9 @@
       "length": 4,
       "default": [
         -180,
-        -85.0511,
+        -85.051129,
         180,
-        85.0511
+        85.051129
       ],
       "doc": "An array containing the longitude and latitude of the southwest and northeast corners of the source's bounding box in the following order: `[sw.lng, sw.lat, ne.lng, ne.lat]`. When this property is included in a source, no tiles outside of the given bounds are requested by Mapbox GL."
     },
@@ -361,7 +361,7 @@
     "cluster": {
       "type": "boolean",
       "default": false,
-      "doc": "If the data is a collection of point features, setting this to true clusters the points by radius into groups."
+      "doc": "If the data is a collection of point features, setting this to true clusters the points by radius into groups. Cluster groups become new `Point` features in the source with additional properties:\n * `cluster` Is `true` if the point is a cluster \n * `cluster_id` A unqiue id for the cluster to be used in conjunction with the [cluster inspection methods](https://www.mapbox.com/mapbox-gl-js/api/#geojsonsource#getclusterexpansionzoom)\n * `point_count` Number of original points grouped into this cluster\n * `point_count_abbreviated` An abbreviated point count"
     },
     "clusterRadius": {
       "type": "number",
@@ -377,6 +377,11 @@
       "type": "boolean",
       "default": false,
       "doc": "Whether to calculate line distance metrics. This is required for line layers that specify `line-gradient` values."
+    },
+    "generateId": {
+        "type": "boolean",
+        "default": false,
+        "doc": "Whether to generate ids for the geojson features. When enabled, the `feature.id` property will be auto assigned based on its index in the `features` array, over-writing any previous values."
     }
   },
   "source_video": {
@@ -889,7 +894,10 @@
           "macos": "0.1.0"
         },
         "`line-center` value": {
-          "js": "0.47.0"
+          "js": "0.47.0",
+          "android": "6.4.0",
+          "ios": "4.3.0",
+          "macos": "0.10.0"
         },
         "data-driven styling": {}
       },
@@ -939,6 +947,32 @@
           "android": "2.0.1",
           "ios": "2.0.0",
           "macos": "0.1.0"
+        },
+        "data-driven styling": {}
+      },
+      "expression": {
+        "interpolated": false,
+        "parameters": [
+          "zoom"
+        ]
+      },
+      "property-type": "data-constant"
+    },
+    "symbol-z-order": {
+      "type": "enum",
+      "values": {
+        "viewport-y": {
+          "doc": "Symbols will be sorted by their y-position relative to the viewport."
+        },
+        "source": {
+          "doc": "Symbols will be rendered in the same order as the source data with no sorting applied."
+        }
+      },
+      "default": "viewport-y",
+      "doc": "Controls the order in which overlapping symbols in the same layer are rendered",
+      "sdk-support": {
+        "basic functionality": {
+          "js": "0.49.0"
         },
         "data-driven styling": {}
       },
@@ -1505,10 +1539,10 @@
       "property-type": "data-constant"
     },
     "text-field": {
-      "type": "string",
+      "type": "formatted",
       "default": "",
       "tokens": true,
-      "doc": "Value to use for a text label.",
+      "doc": "Value to use for a text label. If a plain `string` is provided, it will be treated as a `formatted` with default/inherited formatting options.",
       "sdk-support": {
         "basic functionality": {
           "js": "0.10.0",
@@ -2400,6 +2434,24 @@
           }
         }
       },
+      "interpolate-hcl": {
+        "doc": "Produces continuous, smooth results by interpolating between pairs of input and output values (\"stops\"). Works like `interpolate`, but the output type must be `color`, and the interpolation is performed in the Hue-Chroma-Luminance color space.",
+        "group": "Ramps, scales, curves",
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.49.0"
+          }
+        }
+      },
+      "interpolate-lab": {
+        "doc": "Produces continuous, smooth results by interpolating between pairs of input and output values (\"stops\"). Works like `interpolate`, but the output type must be `color`, and the interpolation is performed in the CIELAB color space.",
+        "group": "Ramps, scales, curves",
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.49.0"
+          }
+        }
+      },
       "ln2": {
         "doc": "Returns mathematical constant ln(2).",
         "group": "Math",
@@ -2501,7 +2553,18 @@
         "group": "Types",
         "sdk-support": {
           "basic functionality": {
-            "js": "0.45.0"
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
+          }
+        }
+      },
+      "format": {
+        "doc": "Returns `formatted` text containing annotations for use in mixed-format `text-field` entries. If set, the `text-font` argument overrides the font specified by the root layout properties. If set, the `font-scale` argument specifies a scaling factor relative to the `text-size` specified in the root layout properties.",
+        "group": "Types",
+        "sdk-support": {
+          "basic functionality": {
+            "js": "0.48.0"
           }
         }
       },
@@ -2971,6 +3034,11 @@
             "android": "6.0.0",
             "ios": "4.0.0",
             "macos": "0.7.0"
+          },
+          "collator": {
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       },
@@ -2983,6 +3051,11 @@
             "android": "6.0.0",
             "ios": "4.0.0",
             "macos": "0.7.0"
+          },
+          "collator": {
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       },
@@ -2995,6 +3068,11 @@
             "android": "6.0.0",
             "ios": "4.0.0",
             "macos": "0.7.0"
+          },
+          "collator": {
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       },
@@ -3007,6 +3085,11 @@
             "android": "6.0.0",
             "ios": "4.0.0",
             "macos": "0.7.0"
+          },
+          "collator": {
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       },
@@ -3019,6 +3102,11 @@
             "android": "6.0.0",
             "ios": "4.0.0",
             "macos": "0.7.0"
+          },
+          "collator": {
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       },
@@ -3031,6 +3119,11 @@
             "android": "6.0.0",
             "ios": "4.0.0",
             "macos": "0.7.0"
+          },
+          "collator": {
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       },
@@ -3099,7 +3192,7 @@
         }
       },
       "concat": {
-        "doc": "Returns a string consisting of the concatenation of the inputs.",
+        "doc": "Returns a `string` consisting of the concatenation of the inputs. If any inputs are `formatted`, returns a `formatted` with default formatting options for all unformatted inputs.",
         "group": "String",
         "sdk-support": {
           "basic functionality": {
@@ -3115,7 +3208,9 @@
         "group": "String",
         "sdk-support": {
           "basic functionality": {
-            "js": "0.45.0"
+            "js": "0.45.0",
+            "ios": "4.2.0",
+            "macos": "0.9.0"
           }
         }
       }
@@ -3434,15 +3529,21 @@
           "ios": "2.0.0",
           "macos": "0.1.0"
         },
-        "data-driven styling": {}
+        "data-driven styling": {
+          "js": "0.49.0",
+          "android": "6.5.0",
+          "macos": "0.11.0",
+          "ios": "4.4.0"
+        }
       },
       "expression": {
         "interpolated": false,
         "parameters": [
-          "zoom"
+          "zoom",
+          "feature"
         ]
       },
-      "property-type": "cross-faded"
+      "property-type": "cross-faded-data-driven"
     }
   },
   "paint_fill-extrusion": {
@@ -3574,15 +3675,21 @@
           "ios": "3.6.0",
           "macos": "0.5.0"
         },
-        "data-driven styling": {}
+        "data-driven styling": {
+          "js": "0.49.0",
+          "android": "6.5.0",
+          "macos": "0.11.0",
+          "ios": "4.4.0"
+        }
       },
       "expression": {
         "interpolated": false,
         "parameters": [
-          "zoom"
+          "zoom",
+          "feature"
         ]
       },
-      "property-type": "cross-faded"
+      "property-type": "cross-faded-data-driven"
     },
     "fill-extrusion-height": {
       "type": "number",
@@ -3939,15 +4046,21 @@
           "ios": "2.0.0",
           "macos": "0.1.0"
         },
-        "data-driven styling": {}
+        "data-driven styling": {
+          "js": "0.49.0",
+          "android": "6.5.0",
+          "macos": "0.11.0",
+          "ios": "4.4.0"
+        }
       },
       "expression": {
         "interpolated": false,
         "parameters": [
-          "zoom"
+          "zoom",
+          "feature"
         ]
       },
-      "property-type": "cross-faded"
+      "property-type": "cross-faded-data-driven"
     },
     "line-gradient": {
       "type": "color",
@@ -5086,7 +5199,10 @@
       "default": "linear",
       "sdk-support": {
         "basic functionality": {
-          "js": "0.47.0"
+          "js": "0.47.0",
+          "android": "6.3.0",
+          "ios": "4.2.0",
+          "macos": "0.9.0"
         },
         "data-driven styling": {}
       },

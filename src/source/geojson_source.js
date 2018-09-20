@@ -60,6 +60,7 @@ import type {GeoJSONSourceSpecification} from '../style-spec/types';
  * @see [Draw GeoJSON points](https://www.mapbox.com/mapbox-gl-js/example/geojson-markers/)
  * @see [Add a GeoJSON line](https://www.mapbox.com/mapbox-gl-js/example/geojson-line/)
  * @see [Create a heatmap from points](https://www.mapbox.com/mapbox-gl-js/example/heatmap/)
+ * @see [Create and style clusters](https://www.mapbox.com/mapbox-gl-js/example/cluster/)
  */
 class GeoJSONSource extends Evented implements Source {
     type: 'geojson';
@@ -128,7 +129,8 @@ class GeoJSONSource extends Evented implements Source {
                 tolerance: (options.tolerance !== undefined ? options.tolerance : 0.375) * scale,
                 extent: EXTENT,
                 maxZoom: this.maxzoom,
-                lineMetrics: options.lineMetrics || false
+                lineMetrics: options.lineMetrics || false,
+                generateId: options.generateId || false
             },
             superclusterOptions: {
                 maxZoom: options.clusterMaxZoom !== undefined ?

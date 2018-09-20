@@ -21,13 +21,14 @@ class Transform {
     tileZoom: number;
     lngRange: ?[number, number];
     latRange: ?[number, number];
+    maxValidLatitude: number;
     scale: number;
     width: number;
     height: number;
     angle: number;
     rotationMatrix: Float64Array;
     zoomFraction: number;
-    pixelsToGLUnits: Array<number>;
+    pixelsToGLUnits: [number, number];
     cameraToCenterDistance: number;
     projMatrix: Float64Array;
     alignedProjMatrix: Float64Array;
@@ -47,6 +48,7 @@ class Transform {
 
     constructor(minZoom: ?number, maxZoom: ?number, renderWorldCopies: boolean | void) {
         this.tileSize = 512; // constant
+        this.maxValidLatitude = 85.051129; // constant
 
         this._renderWorldCopies = renderWorldCopies === undefined ? true : renderWorldCopies;
         this._minZoom = minZoom || 0;
@@ -198,13 +200,21 @@ class Transform {
      * @private
      */
     getVisibleUnwrappedCoordinates(tileID: CanonicalTileID) {
-        const ul = this.pointCoordinate(new Point(0, 0), 0);
-        const ur = this.pointCoordinate(new Point(this.width, 0), 0);
-        const w0 = Math.floor(ul.column);
-        const w1 = Math.floor(ur.column);
         const result = [new UnwrappedTileID(0, tileID)];
         if (this._renderWorldCopies) {
-            for (let w = w0; w <= w1; w++) {
+            const utl = this.pointCoordinate(new Point(0, 0), 0);
+            const utr = this.pointCoordinate(new Point(this.width, 0), 0);
+            const ubl = this.pointCoordinate(new Point(this.width, this.height), 0);
+            const ubr = this.pointCoordinate(new Point(0, this.height), 0);
+            const w0 = Math.floor(Math.min(utl.column, utr.column, ubl.column, ubr.column));
+            const w1 = Math.floor(Math.max(utl.column, utr.column, ubl.column, ubr.column));
+
+            // Add an extra copy of the world on each side to properly render ImageSources and CanvasSources.
+            // Both sources draw outside the tile boundaries of the tile that "contains them" so we need
+            // to add extra copies on both sides in case offscreen tiles need to draw into on-screen ones.
+            const extraWorldCopy = 1;
+
+            for (let w = w0 - extraWorldCopy; w <= w1 + extraWorldCopy; w++) {
                 if (w === 0) continue;
                 result.push(new UnwrappedTileID(w, tileID));
             }
@@ -284,7 +294,7 @@ class Transform {
     get point(): Point { return new Point(this.x, this.y); }
 
     /**
-     * latitude to absolute x coord
+     * longitude to absolute x coord
      * @returns {number} pixel coordinate
      */
     lngX(lng: number) {
@@ -295,6 +305,7 @@ class Transform {
      * @returns {number} pixel coordinate
      */
     latY(lat: number) {
+        lat = clamp(lat, -this.maxValidLatitude, this.maxValidLatitude);
         const y = 180 / Math.PI * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
         return (180 - y) * this.worldSize / 360;
     }
@@ -433,7 +444,7 @@ class Transform {
             this._constrain();
         } else {
             this.lngRange = null;
-            this.latRange = [-85.05113, 85.05113];
+            this.latRange = [-this.maxValidLatitude, this.maxValidLatitude];
         }
     }
 
